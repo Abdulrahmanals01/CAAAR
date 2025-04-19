@@ -1,61 +1,86 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import Header from './components/Header';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import CarSearch from './pages/CarSearch';
-import CarDetails from './pages/CarDetails';
-import BookingHistory from './pages/BookingHistory';
+import SearchResults from './pages/SearchResults';
+import ListCar from './pages/ListCar';
 import HostDashboard from './pages/dashboard/HostDashboard';
-import RenterDashboard from './pages/dashboard/RenterDashboard';
-import NotFound from './pages/NotFound';
 
-// Simple Navbar component
-const Navbar = () => (
-  <nav className="bg-blue-600 p-4 text-white">
-    <div className="container mx-auto flex justify-between">
-      <a href="/" className="font-bold text-xl">Sayarati</a>
-      <div className="space-x-4">
-        <a href="/cars" className="hover:underline">Find Cars</a>
-        <a href="/bookings" className="hover:underline">My Bookings</a>
-        <a href="/login" className="hover:underline">Login</a>
-        <a href="/register" className="hover:underline">Register</a>
-      </div>
-    </div>
-  </nav>
-);
+// Protected route component
+const ProtectedRoute = ({ element, requiredRole }) => {
+  const token = localStorage.getItem('token');
+  const userRole = localStorage.getItem('userRole');
+  
+  if (!token) {
+    return <Navigate to="/login" />;
+  }
+  
+  if (requiredRole && userRole !== requiredRole) {
+    return <Navigate to="/" />;
+  }
+  
+  return element;
+};
 
-// Simple Footer component
-const Footer = () => (
-  <footer className="bg-gray-800 text-white p-4 mt-auto">
-    <div className="container mx-auto text-center">
-      <p>© 2023 Sayarati Car Sharing. All rights reserved.</p>
-    </div>
-  </footer>
-);
-
-const App = () => {
+function App() {
   return (
     <Router>
-      <div className="flex flex-col min-h-screen">
-        <Navbar />
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <Header />
         <main className="flex-grow">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
-            <Route path="/cars" element={<CarSearch />} />
-            <Route path="/cars/:id" element={<CarDetails />} />
-            <Route path="/bookings" element={<BookingHistory />} />
-            <Route path="/host-dashboard" element={<HostDashboard />} />
-            <Route path="/renter-dashboard" element={<RenterDashboard />} />
-            <Route path="*" element={<NotFound />} />
+            <Route path="/cars/search" element={<SearchResults />} />
+            <Route 
+              path="/list-car" 
+              element={
+                <ProtectedRoute 
+                  element={<ListCar />} 
+                  requiredRole="host" 
+                />
+              } 
+            />
+            <Route 
+              path="/dashboard/host" 
+              element={
+                <ProtectedRoute 
+                  element={<HostDashboard />} 
+                  requiredRole="host" 
+                />
+              } 
+            />
+            {/* Add more routes as needed */}
           </Routes>
         </main>
-        <Footer />
+        <footer className="bg-gray-800 text-white p-6">
+          <div className="container mx-auto">
+            <div className="flex flex-col md:flex-row justify-between">
+              <div className="mb-4 md:mb-0">
+                <h3 className="text-xl font-bold mb-2">Sayarati</h3>
+                <p>The premier car sharing platform in Saudi Arabia</p>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-2">Quick Links</h4>
+                <ul className="space-y-1">
+                  <li><a href="/" className="hover:text-blue-300">Home</a></li>
+                  <li><a href="/cars" className="hover:text-blue-300">Browse Cars</a></li>
+                  <li><a href="/about" className="hover:text-blue-300">About Us</a></li>
+                  <li><a href="/contact" className="hover:text-blue-300">Contact</a></li>
+                </ul>
+              </div>
+            </div>
+            <div className="mt-6 pt-6 border-t border-gray-700 text-center">
+              <p>&copy; {new Date().getFullYear()} Sayarati. All rights reserved.</p>
+            </div>
+          </div>
+        </footer>
       </div>
     </Router>
   );
-};
+}
 
 export default App;
