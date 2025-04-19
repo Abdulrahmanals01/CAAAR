@@ -34,5 +34,8 @@ router.get('/', carController.getCars);
 
 // GET - Get car by ID (public endpoint)
 router.get('/:id', carController.getCarById);
-
+// DELETE - Delete car by ID
+router.delete('/:id', authMiddleware.authenticate, authMiddleware.isHost, carController.deleteCar);
+// DELETE - Delete car by ID
+router.delete('/:id', authMiddleware.authenticate, authMiddleware.isHost, carController.deleteCar);
 module.exports = router;

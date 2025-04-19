@@ -5,9 +5,11 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import CarDetails from "./pages/CarDetails";
+import CarDetails from './pages/CarDetails';
 import SearchResults from './pages/SearchResults';
 import ListCar from './pages/ListCar';
 import HostDashboard from './pages/dashboard/HostDashboard';
+import CarDetails from './pages/CarDetails';
 
 // Protected route component
 const ProtectedRoute = ({ element, requiredRole }) => {
@@ -35,6 +37,7 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/cars/:id" element={<CarDetails />} />
             <Route path="/cars/:id" element={<CarDetails />} />
             <Route path="/cars/search" element={<SearchResults />} />
             <Route 

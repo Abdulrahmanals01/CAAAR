@@ -1,36 +1,41 @@
 const { validationResult } = require('express-validator');
+// Add these helper functions at the top of your carController.js file
+
+// Debug function to log image paths
+const logImagePath = (prefix, imagePath) => {
+  console.log(`${prefix} - Original image path:`, imagePath);
+  if (!imagePath) {
+    console.log(`${prefix} - No image path provided`);
+    return null;
+  }
+  
+  // Extract filename
+  const filename = imagePath.includes('/') ? imagePath.split('/').pop() : imagePath;
+  console.log(`${prefix} - Extracted filename:`, filename);
+  
+  const fullUrl = `${process.env.API_URL || 'http://localhost:5000'}/uploads/cars/${filename}`;
+  console.log(`${prefix} - Generated full URL:`, fullUrl);
+  return fullUrl;
+};
+
+// Ensure consistent image URL generation
+const formatImageUrl = (imagePath) => {
+  if (!imagePath) return null;
+  
+  // For direct paths like 'uploads/cars/image.jpg'
+  if (imagePath.includes('uploads/cars/')) {
+    return `${process.env.API_URL || 'http://localhost:5000'}/${imagePath}`;
+  }
+  
+  // For just filenames
+  return `${process.env.API_URL || 'http://localhost:5000'}/uploads/cars/${imagePath}`;
+};
 const db = require('../config/database');
 const fs = require('fs');
 const path = require('path');
 
-// Helper function to format image URLs consistently
-const formatImageUrl = (imagePath) => {
-  if (!imagePath) return null;
-  
-  // Get the base URL
-  const baseUrl = process.env.API_URL || "http://localhost:5000";
-  
-  // Case 1: If it's already a complete URL, return it
-  if (imagePath.startsWith("http")) {
-    return imagePath;
-  }
-  
-  // Case 2: If it's an absolute path from the filesystem
-  if (imagePath.startsWith("/mnt/") || imagePath.startsWith("C:")) {
-    // Extract just the filename
-    const parts = imagePath.split("/");
-    const filename = parts[parts.length - 1];
-    return `${baseUrl}/uploads/cars/${imagePath.split("/").pop()}`;
-  }
-  
-  // Case 3: If it's already a proper relative path
-  if (imagePath.startsWith("uploads/")) {
-    return `${baseUrl}/${imagePath}`;
-  }
-  
-  // Case 4: If it's just a filename
-  return `${baseUrl}/uploads/cars/${imagePath.split("/").pop()}`;
-};
+// Add this helper function at the top of your carController.js file
+// This will ensure all image URLs are formatted correctly
 
 // Create a new car listing
 exports.createCar = async (req, res) => {
@@ -61,20 +66,21 @@ exports.createCar = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    if (userCheck.rows[0].role !== 'host' && userCheck.rows[0].role !== 'admin') {
-      return res.status(403).json({ message: 'Only hosts can create car listings' });
+    if (userCheck.rows[0].role !== 'host' && userCheck.rows[0].role !== 'admin') {      
+      return res.status(403).json({ message: 'Only hosts can create car listings' });   
     }
 
-    // Handle image upload - normalize the path
+    // Handle image upload
+    // Store only relative paths
     let image = null;
     if (req.file) {
       // Extract the relative path to ensure consistency
-      image = req.file.path.replace(/^.*[\/\\]uploads[\/\\]/, "uploads/");
+      image = req.file.path.replace(/^.*[\/]uploads[\/]/, "uploads/");
       console.log("Normalized image path:", image);
     }
 
     // Check if plate number already exists
-    const plateCheck = await db.query('SELECT id FROM cars WHERE plate = $1', [plate]);
+    const plateCheck = await db.query('SELECT id FROM cars WHERE plate = $1', [plate]); 
     if (plateCheck.rows.length > 0) {
       return res.status(400).json({ message: 'Car with this plate number already exists' });
     }
@@ -103,16 +109,10 @@ exports.createCar = async (req, res) => {
       ]
     );
 
-    // Add image_url to the response
-    const car = carInsert.rows[0];
-    if (car.image) {
-      car.image_url = formatImageUrl(car.image);
-    }
-
-    res.status(201).json(car);
+    res.status(201).json(carInsert.rows[0]);
   } catch (err) {
     console.error('Error creating car listing:', err.message);
-    res.status(500).json({ message: 'Server error while creating car listing' });
+    res.status(500).json({ message: 'Server error while creating car listing' });       
   }
 };
 
@@ -120,6 +120,7 @@ exports.createCar = async (req, res) => {
 exports.getCars = async (req, res) => {
   try {
     // Build the query to get all cars with host information
+    // Modified to handle if status column may not exist
     const query = `
       SELECT c.id, c.brand, c.model, c.year, c.color, c.mileage,
              c.price_per_day, c.location, c.availability_start,
@@ -135,6 +136,12 @@ exports.getCars = async (req, res) => {
     // Format image URLs
     const cars = result.rows.map(car => {
       if (car.image) {
+        console.log("All cars - Original image path:", car.image);
+        // Remove 'uploads/' from the beginning if present
+        const imagePath = car.image.startsWith('uploads/')
+          ? car.image
+          : car.image;
+
         car.image_url = formatImageUrl(car.image);
       }
       return car;
@@ -169,6 +176,13 @@ exports.getCarById = async (req, res) => {
 
     // Format image URL
     if (car.image) {
+      console.log('Debug - Car image path:', car.image);
+      console.log('Debug - Car image URL:', car.image_url);
+      console.log("Car detail - Original image path:", car.image);
+      const imagePath = car.image.startsWith('uploads/')
+        ? car.image
+        : car.image;
+
       car.image_url = formatImageUrl(car.image);
       console.log("Car details - Generated image URL:", car.image_url);
     }
@@ -176,7 +190,7 @@ exports.getCarById = async (req, res) => {
     res.json(car);
   } catch (err) {
     console.error('Error fetching car details:', err.message);
-    res.status(500).json({ message: 'Server error while fetching car details' });
+    res.status(500).json({ message: 'Server error while fetching car details' });       
   }
 };
 
@@ -196,6 +210,11 @@ exports.getHostCars = async (req, res) => {
     // Format image URLs
     const formattedCars = cars.rows.map(car => {
       if (car.image) {
+        console.log("Host cars - Original image path:", car.image);
+        const imagePath = car.image.startsWith('uploads/')
+          ? car.image
+          : car.image;
+
         car.image_url = formatImageUrl(car.image);
       }
       return car;

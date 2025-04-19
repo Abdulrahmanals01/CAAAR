@@ -8,6 +8,7 @@ import CarDetails from "./pages/CarDetails";
 import SearchResults from './pages/SearchResults';
 import ListCar from './pages/ListCar';
 import HostDashboard from './pages/dashboard/HostDashboard';
+import CarDetails from './pages/CarDetails';
 
 // Protected route component
 const ProtectedRoute = ({ element, requiredRole }) => {
