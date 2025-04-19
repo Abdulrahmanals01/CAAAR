@@ -5,6 +5,9 @@ const carController = require('../controllers/carController');
 const authMiddleware = require('../middleware/auth');
 const upload = require('../config/multer');
 
+// GET - Get host's cars (this specific route must come BEFORE the /:id route)
+router.get('/owner', authMiddleware.authenticate, authMiddleware.isHost, carController.getHostCars);
+
 // POST - Create a new car listing
 router.post(
   '/',
@@ -31,8 +34,5 @@ router.get('/', carController.getCars);
 
 // GET - Get car by ID (public endpoint)
 router.get('/:id', carController.getCarById);
-
-// GET - Get host's cars
-router.get('/host', authMiddleware.authenticate, authMiddleware.isHost, carController.getHostCars);
 
 module.exports = router;

@@ -7,21 +7,17 @@ const db = require('../config/database');
 exports.register = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    console.log('Validation errors:', errors.array());
     return res.status(400).json({ errors: errors.array() });
   }
-
-  console.log('Request body:', req.body);
-  console.log('File:', req.file);
 
   const { name, email, password, role, phone, id_number } = req.body;
   const licenseImage = req.file ? req.file.path : null;
 
   try {
     // Check if user already exists
-    const userExists = await db.query('SELECT * FROM users WHERE email = $1', [email]); 
+    const userExists = await db.query('SELECT * FROM users WHERE email = $1', [email]);
     if (userExists.rows.length > 0) {
-      return res.status(400).json({ message: 'User already exists with this email' });  
+      return res.status(400).json({ message: 'User already exists with this email' });
     }
 
     // Hash password
@@ -60,7 +56,7 @@ exports.register = async (req, res) => {
       }
     );
   } catch (err) {
-    console.error('Error in user registration:', err);
+    console.error('Error in user registration:', err.message);
     res.status(500).json({ message: 'Server error during registration' });
   }
 };
@@ -76,7 +72,7 @@ exports.login = async (req, res) => {
 
   try {
     // Check if user exists
-    const result = await db.query('SELECT * FROM users WHERE email = $1', [email]);     
+    const result = await db.query('SELECT * FROM users WHERE email = $1', [email]);
     if (result.rows.length === 0) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
