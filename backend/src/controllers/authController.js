@@ -138,3 +138,48 @@ exports.getCurrentUser = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+// Add this function to allow users to switch roles
+exports.switchRole = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { newRole } = req.body;
+    
+    // Validate the new role
+    if (newRole !== 'host' && newRole !== 'renter') {
+      return res.status(400).json({ message: 'Invalid role. Must be either "host" or "renter".' });
+    }
+    
+    // Update the user's role in the database
+    const result = await db.query(
+      'UPDATE users SET role = $1 WHERE id = $2 RETURNING id, email, name, role',
+      [newRole, userId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    const updatedUser = result.rows[0];
+    
+    // Generate a new token with the updated role
+    const token = jwt.sign(
+      { user: { id: updatedUser.id, role: updatedUser.role } },
+      process.env.JWT_SECRET,
+      { expiresIn: '1d' }
+    );
+    
+    res.json({
+      token,
+      user: {
+        id: updatedUser.id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        role: updatedUser.role
+      }
+    });
+  } catch (err) {
+    console.error('Error switching user role:', err);
+    res.status(500).json({ message: 'Server error while switching role' });
+  }
+};

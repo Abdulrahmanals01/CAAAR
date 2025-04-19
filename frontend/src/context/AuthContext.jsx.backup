@@ -131,50 +131,6 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Login user
-  const switchRole = async (newRole) => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const token = localStorage.getItem("token");
-      
-      if (!token) {
-        setError("Authentication required");
-        setLoading(false);
-        return false;
-      }
-      
-      const config = {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        }
-      };
-      
-      const response = await axios.post(
-        "http://localhost:5000/api/users/switch-role",
-        { newRole },
-        config
-      );
-      
-      // Update authentication state with new token and role
-      localStorage.setItem("token", response.data.token);
-      localStorage.setItem("userRole", response.data.user.role);
-      
-      setCurrentUser(response.data.user);
-      setAuthenticated(true);
-      setLoading(false);
-      
-      return true;
-    } catch (err) {
-      console.error("Error switching role:", err);
-      setError(err.response?.data?.message || "Failed to switch role");
-      setLoading(false);
-      return false;
-    }
-  };
-
-
   const login = async (email, password) => {
     const config = {
       headers: {

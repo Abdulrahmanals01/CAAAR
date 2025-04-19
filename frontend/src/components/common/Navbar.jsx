@@ -1,100 +1,110 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import useAuth from '../../hooks/useAuth';
+import React, { useContext, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const Navbar = () => {
-  const { isAuthenticated, user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  
+  const isAuthenticated = localStorage.getItem('token') !== null;
+  const userRole = localStorage.getItem('userRole');
+  const userName = localStorage.getItem('userName') || 'User';
+  
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('userName');
+    navigate('/');
+    window.location.reload();
+  };
+
+  const handleRoleSwitch = async () => {
+    setLoading(true);
+    try {
+      const newRole = userRole === 'host' ? 'renter' : 'host';
+      const token = localStorage.getItem('token');
+      
+      const response = await axios.post(
+        'http://localhost:5000/api/users/switch-role',
+        { newRole },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+      
+      // Update local storage with new token and role
+      localStorage.setItem('token', response.data.token);
+      localStorage.setItem('userRole', response.data.user.role);
+      
+      // Reload the page to update UI
+      window.location.reload();
+    } catch (error) {
+      console.error('Error switching role:', error);
+      alert('Failed to switch role. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <nav className="bg-blue-600 text-white shadow-md">
-      <div className="container mx-auto px-4 py-3 flex justify-between items-center">
+    <nav className="bg-blue-600 text-white p-4">
+      <div className="container mx-auto flex justify-between items-center">
         <Link to="/" className="text-2xl font-bold">Sayarati</Link>
         
-        <div className="flex items-center space-x-4">
-          <Link to="/cars" className="hover:text-blue-200">Find Cars</Link>
+        <div className="hidden md:flex space-x-6">
+          <Link to="/" className="hover:text-blue-200">Home</Link>
+          <Link to="/cars/search" className="hover:text-blue-200">Find Cars</Link>
           
+          {isAuthenticated && (
+            <>
+              <Link to="/dashboard" className="hover:text-blue-200">Dashboard</Link>
+              
+              {userRole === 'host' && (
+                <Link to="/list-car" className="hover:text-blue-200">List Your Car</Link>
+              )}
+            </>
+          )}
+        </div>
+        
+        <div className="flex items-center space-x-4">
           {isAuthenticated ? (
             <>
-              {user?.role === 'host' && (
-                <Link to="/cars/add" className="hover:text-blue-200">Add Car</Link>
+              {userRole && (
+                <button
+                  className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600 disabled:opacity-50"
+                  onClick={handleRoleSwitch}
+                  disabled={loading}
+                >
+                  {loading ? 'Switching...' : `Switch to ${userRole === 'host' ? 'Renter' : 'Host'}`}
+                </button>
               )}
               
-              <Link to="/bookings" className="hover:text-blue-200">My Bookings</Link>
-              <Link to="/messages" className="hover:text-blue-200">Messages</Link>
+              <span className="hidden md:inline-block">
+                Welcome, {userName} ({userRole})
+              </span>
               
-              <div className="relative group">
-                <button className="hover:text-blue-200">
-                  {user?.name || 'Account'} ▼
-                </button>
-                <div className="absolute right-0 w-48 bg-white shadow-lg rounded-md mt-2 py-2 z-10 hidden group-hover:block">
-                  <Link to="/profile" className="block px-4 py-2 text-gray-800 hover:bg-blue-100">Profile</Link>
-                  
-                  {user?.role === 'admin' && (
-                    <Link to="/admin" className="block px-4 py-2 text-gray-800 hover:bg-blue-100">Admin Dashboard</Link>
-                  )}
-                  
-                  <button 
-                    onClick={logout}
-                    className="block w-full text-left px-4 py-2 text-gray-800 hover:bg-blue-100"
-                  >
-                    Logout
-                  </button>
-                </div>
-              </div>
+              <button
+                onClick={handleLogout}
+                className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+              >
+                Logout
+              </button>
             </>
           ) : (
             <>
-              <Link to="/login" className="hover:text-blue-200">Login</Link>
-              <Link to="/register" className="bg-white text-blue-600 px-4 py-2 rounded-md hover:bg-blue-100">
-cat > /mnt/c/Users/ddodo/OneDrive/Desktop/CAAAR/frontend/src/components/common/Navbar.jsx << 'EOF'
-import React from 'react';
-import { Link } from 'react-router-dom';
-import useAuth from '../../hooks/useAuth';
-
-const Navbar = () => {
-  const { isAuthenticated, user, logout } = useAuth();
-
-  return (
-    <nav className="bg-blue-600 text-white shadow-md">
-      <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-        <Link to="/" className="text-2xl font-bold">Sayarati</Link>
-        
-        <div className="flex items-center space-x-4">
-          <Link to="/cars" className="hover:text-blue-200">Find Cars</Link>
-          
-          {isAuthenticated ? (
-            <>
-              {user?.role === 'host' && (
-                <Link to="/cars/add" className="hover:text-blue-200">Add Car</Link>
-              )}
-              
-              <Link to="/bookings" className="hover:text-blue-200">My Bookings</Link>
-              <Link to="/messages" className="hover:text-blue-200">Messages</Link>
-              
-              <div className="relative group">
-                <button className="hover:text-blue-200">
-                  {user?.name || 'Account'} ▼
-                </button>
-                <div className="absolute right-0 w-48 bg-white shadow-lg rounded-md mt-2 py-2 z-10 hidden group-hover:block">
-                  <Link to="/profile" className="block px-4 py-2 text-gray-800 hover:bg-blue-100">Profile</Link>
-                  
-                  {user?.role === 'admin' && (
-                    <Link to="/admin" className="block px-4 py-2 text-gray-800 hover:bg-blue-100">Admin Dashboard</Link>
-                  )}
-                  
-                  <button 
-                    onClick={logout}
-                    className="block w-full text-left px-4 py-2 text-gray-800 hover:bg-blue-100"
-                  >
-                    Logout
-                  </button>
-                </div>
-              </div>
-            </>
-          ) : (
-            <>
-              <Link to="/login" className="hover:text-blue-200">Login</Link>
-              <Link to="/register" className="bg-white text-blue-600 px-4 py-2 rounded-md hover:bg-blue-100">
+              <Link
+                to="/login"
+                className="bg-transparent border border-white text-white px-4 py-2 rounded hover:bg-white hover:text-blue-600"
+              >
+                Login
+              </Link>
+              <Link
+                to="/register"
+                className="bg-white text-blue-600 px-4 py-2 rounded hover:bg-blue-100"
+              >
                 Register
               </Link>
             </>
