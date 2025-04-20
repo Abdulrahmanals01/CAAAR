@@ -1,19 +1,18 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
-
-// Components
 import Navbar from './components/common/Navbar';
 import PrivateRoute from './components/common/PrivateRoute';
 import HostRoute from './components/common/HostRoute';
-
-// Pages
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import CarDetails from './pages/CarDetails';
-import ListCar from './pages/ListCar';
 import Dashboard from './pages/Dashboard';
+import ListCar from './pages/ListCar';
+import ManageCars from './pages/ManageCars';
+import BookingHistory from './pages/BookingHistory';
+import BookingRequests from './pages/BookingRequests';
+import CarDetails from './pages/CarDetails';
 import SearchResults from './pages/SearchResults';
 import NotFound from './pages/NotFound';
 
@@ -33,22 +32,40 @@ function App() {
               <Route path="/cars/search" element={<SearchResults />} />
               
               {/* Protected Routes */}
-              <Route 
-                path="/dashboard" 
-                element={<PrivateRoute><Dashboard /></PrivateRoute>} 
-              />
+              <Route path="/dashboard" element={
+                <PrivateRoute>
+                  <Dashboard />
+                </PrivateRoute>
+              } />
               
-              {/* Host-Only Routes */}
-              <Route 
-                path="/list-car" 
-                element={<HostRoute><ListCar /></HostRoute>} 
-              />
+              <Route path="/list-car" element={
+                <HostRoute>
+                  <ListCar />
+                </HostRoute>
+              } />
+              
+              <Route path="/manage-cars" element={
+                <HostRoute>
+                  <ManageCars />
+                </HostRoute>
+              } />
+              
+              <Route path="/booking-history" element={
+                <PrivateRoute>
+                  <BookingHistory />
+                </PrivateRoute>
+              } />
+              
+              <Route path="/booking-requests" element={
+                <HostRoute>
+                  <BookingRequests />
+                </HostRoute>
+              } />
               
               {/* 404 Route */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </main>
-          
           <footer className="bg-gray-800 text-white p-6">
             <div className="container mx-auto">
               <p className="text-center">&copy; {new Date().getFullYear()} Sayarati. All rights reserved.</p>

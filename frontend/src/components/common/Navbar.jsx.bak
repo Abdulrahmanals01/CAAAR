@@ -44,9 +44,10 @@ const Navbar = () => {
       localStorage.setItem("userName", response.data.user.name || userName);
 
       console.log("Role switched successfully to:", response.data.user.role);
-      
-      // Navigate to the home page instead of just reloading
-      window.location.href = '/';
+      alert(`Role switched to ${response.data.user.role}`);
+
+      // Reload the page to update UI
+      window.location.reload();
     } catch (error) {
       console.error("Error switching role:", error);
       alert("Failed to switch role. Please try again.");

@@ -1,486 +1,296 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import { Tab } from '@headlessui/react';
+import { Link } from 'react-router-dom';
+import { getUserBookings, updateBookingStatus } from '../api/bookings';
 
 const BookingHistory = () => {
-  const [currentBookings, setCurrentBookings] = useState([]);
-  const [pastBookings, setPastBookings] = useState([]);
-  const [pendingBookings, setPendingBookings] = useState([]);
-  const [userRole, setUserRole] = useState('');
+  const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('current');
+  
+  const userRole = localStorage.getItem('userRole');
+  const isRenter = userRole === 'renter';
 
   useEffect(() => {
-    // Check authentication
-    const token = localStorage.getItem('token');
-    if (!token) {
-      navigate('/login');
-      return;
-    }
+    fetchBookings();
+  }, []);
 
-    // Get user role from local storage
-    const userStr = localStorage.getItem('user');
-    let role = '';
-    
-    if (userStr) {
-      try {
-        const user = JSON.parse(userStr);
-        role = user.role;
-        setUserRole(role);
-      } catch (err) {
-        console.error('Error parsing user data:', err);
-        navigate('/login');
-        return;
-      }
-    } else {
-      navigate('/login');
-      return;
-    }
-
-    // Set up axios defaults
-    axios.defaults.headers.common['x-auth-token'] = token;
-
-    // Fetch booking data based on role
-    fetchBookings(role);
-  }, [navigate]);
-
-  const fetchBookings = async (role) => {
+  const fetchBookings = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      
-      let currentEndpoint, pastEndpoint, pendingEndpoint;
-      
-      if (role === 'host' || role === 'admin') {
-        currentEndpoint = '/api/bookings/host/current';
-        pastEndpoint = '/api/bookings/host/past';
-        pendingEndpoint = '/api/bookings/host/pending';
+      const response = await getUserBookings();
+      if (response.success) {
+        setBookings(response.data);
       } else {
-        // Default to renter
-        currentEndpoint = '/api/bookings/renter/current';
-        pastEndpoint = '/api/bookings/renter/past';
-        pendingEndpoint = null; // Renters don't have pending bookings to approve
+        setError(response.error);
       }
-      
-      // Fetch current bookings
-      const currentRes = await axios.get(`${process.env.REACT_APP_API_URL}${currentEndpoint}`);
-      setCurrentBookings(currentRes.data);
-      
-      // Fetch past bookings
-      const pastRes = await axios.get(`${process.env.REACT_APP_API_URL}${pastEndpoint}`);
-      setPastBookings(pastRes.data);
-      
-      // Fetch pending bookings if user is a host
-      if (pendingEndpoint) {
-        const pendingRes = await axios.get(`${process.env.REACT_APP_API_URL}${pendingEndpoint}`);
-        setPendingBookings(pendingRes.data);
-      }
-      
-      setError('');
     } catch (err) {
-      console.error('Error fetching bookings:', err);
-      setError('Failed to load booking history. Please try again.');
-      
-      // If unauthorized, redirect to login
-      if (err.response?.status === 401) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        navigate('/login');
-      }
+      setError('Failed to load bookings');
     } finally {
       setLoading(false);
     }
   };
 
-  const formatDate = (dateString) => {
-    const options = { year: 'numeric', month: 'long', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString(undefined, options);
+  const handleStatusUpdate = async (bookingId, status) => {
+    try {
+      const response = await updateBookingStatus(bookingId, status);
+      if (response.success) {
+        // Update booking in state
+        setBookings(bookings.map(booking => 
+          booking.id === bookingId ? { ...booking, status } : booking
+        ));
+      } else {
+        setError(response.error);
+      }
+    } catch (err) {
+      setError('Failed to update booking status');
+    }
   };
 
-  const getStatusBadge = (status) => {
-    let colorClass = '';
-    
+  const getStatusBadgeClass = (status) => {
     switch (status) {
       case 'pending':
-        colorClass = 'bg-yellow-100 text-yellow-800';
-        break;
+        return 'bg-yellow-100 text-yellow-800';
       case 'accepted':
-        colorClass = 'bg-green-100 text-green-800';
-        break;
+        return 'bg-green-100 text-green-800';
       case 'rejected':
-        colorClass = 'bg-red-100 text-red-800';
-        break;
-      case 'completed':
-        colorClass = 'bg-blue-100 text-blue-800';
-        break;
+        return 'bg-red-100 text-red-800';
       case 'canceled':
-        colorClass = 'bg-gray-100 text-gray-800';
-        break;
+        return 'bg-gray-100 text-gray-800';
+      case 'completed':
+        return 'bg-blue-100 text-blue-800';
       default:
-        colorClass = 'bg-gray-100 text-gray-800';
-    }
-    
-    return `inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${colorClass}`;
-  };
-
-  const handleAcceptBooking = async (bookingId) => {
-    try {
-      await axios.patch(
-        `${process.env.REACT_APP_API_URL}/api/bookings/${bookingId}/status`,
-        { status: 'accepted' }
-      );
-      
-      // Refresh bookings after action
-      fetchBookings(userRole);
-    } catch (err) {
-      console.error('Error accepting booking:', err);
-      alert(err.response?.data?.message || 'Error accepting booking');
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const handleRejectBooking = async (bookingId) => {
-    try {
-      await axios.patch(
-        `${process.env.REACT_APP_API_URL}/api/bookings/${bookingId}/status`,
-        { status: 'rejected' }
-      );
-      
-      // Refresh bookings after action
-      fetchBookings(userRole);
-    } catch (err) {
-      console.error('Error rejecting booking:', err);
-      alert(err.response?.data?.message || 'Error rejecting booking');
+  // Filter bookings based on the active tab
+  const currentDate = new Date();
+  
+  // Current bookings - accepted bookings with end_date >= today
+  const currentBookings = bookings.filter(booking => 
+    booking.status === 'accepted' && 
+    new Date(booking.end_date) >= currentDate
+  );
+  
+  // Pending bookings - bookings with status 'pending'
+  const pendingBookings = bookings.filter(booking => 
+    booking.status === 'pending'
+  );
+  
+  // Past bookings - completed bookings or accepted bookings with end_date < today
+  const pastBookings = bookings.filter(booking => 
+    booking.status === 'completed' || 
+    (booking.status === 'accepted' && new Date(booking.end_date) < currentDate) ||
+    booking.status === 'rejected' ||
+    booking.status === 'canceled'
+  );
+
+  // Get the filtered bookings based on the active tab
+  const getFilteredBookings = () => {
+    switch (activeTab) {
+      case 'current':
+        return currentBookings;
+      case 'pending':
+        return pendingBookings;
+      case 'past':
+        return pastBookings;
+      default:
+        return bookings;
     }
   };
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
+      <div className="container mx-auto p-6 flex justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6">My Booking History</h1>
-      
+    <div className="container mx-auto p-6">
+      <h1 className="text-3xl font-bold mb-6">
+        {isRenter ? 'Your Bookings' : 'Booking Requests'}
+      </h1>
+
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-          <p>{error}</p>
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded">
+          {error}
         </div>
       )}
-      
-      <Tab.Group>
-        <Tab.List className="flex space-x-1 rounded-xl bg-blue-100 p-1 mb-6">
-          {userRole === 'host' && (
-            <Tab
-              className={({ selected }) =>
-                `w-full rounded-lg py-2.5 text-sm font-medium leading-5
-                ${selected 
-                  ? 'bg-white shadow text-blue-700' 
-                  : 'text-blue-500 hover:bg-white/[0.12] hover:text-blue-700'
-                }`
-              }
+
+      {/* Tabs Navigation */}
+      <div className="mb-6 border-b border-gray-200">
+        <nav className="-mb-px flex">
+          <button
+            onClick={() => setActiveTab('current')}
+            className={`py-4 px-6 font-medium text-sm ${
+              activeTab === 'current'
+                ? 'border-b-2 border-blue-500 text-blue-600'
+                : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Current Trips
+            {currentBookings.length > 0 && (
+              <span className="ml-2 bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                {currentBookings.length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('pending')}
+            className={`py-4 px-6 font-medium text-sm ${
+              activeTab === 'pending'
+                ? 'border-b-2 border-blue-500 text-blue-600'
+                : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Pending
+            {pendingBookings.length > 0 && (
+              <span className="ml-2 bg-yellow-100 text-yellow-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                {pendingBookings.length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('past')}
+            className={`py-4 px-6 font-medium text-sm ${
+              activeTab === 'past'
+                ? 'border-b-2 border-blue-500 text-blue-600'
+                : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Past Trips
+            {pastBookings.length > 0 && (
+              <span className="ml-2 bg-gray-100 text-gray-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                {pastBookings.length}
+              </span>
+            )}
+          </button>
+        </nav>
+      </div>
+
+      {getFilteredBookings().length === 0 ? (
+        <div className="bg-white rounded-lg shadow-md p-8 text-center">
+          <div className="text-gray-500 mb-4 text-5xl">🚗</div>
+          <h3 className="text-xl font-semibold mb-2">No bookings found</h3>
+          <p className="text-gray-600 mb-6">
+            {activeTab === 'current'
+              ? "You don't have any current trips."
+              : activeTab === 'pending'
+              ? "You don't have any pending requests."
+              : "You don't have any past trips."}
+          </p>
+          {isRenter && (
+            <Link
+              to="/cars/search"
+              className="inline-block bg-blue-600 text-white font-medium py-2 px-4 rounded hover:bg-blue-700 transition"
             >
-              Pending Requests
-            </Tab>
+              Find a car to rent
+            </Link>
           )}
-          <Tab
-            className={({ selected }) =>
-              `w-full rounded-lg py-2.5 text-sm font-medium leading-5
-              ${selected 
-                ? 'bg-white shadow text-blue-700' 
-                : 'text-blue-500 hover:bg-white/[0.12] hover:text-blue-700'
-              }`
-            }
-          >
-            Current Bookings
-          </Tab>
-          <Tab
-            className={({ selected }) =>
-              `w-full rounded-lg py-2.5 text-sm font-medium leading-5
-              ${selected 
-                ? 'bg-white shadow text-blue-700' 
-                : 'text-blue-500 hover:bg-white/[0.12] hover:text-blue-700'
-              }`
-            }
-          >
-            Past Bookings
-          </Tab>
-        </Tab.List>
-        
-        <Tab.Panels>
-          {userRole === 'host' && (
-            <Tab.Panel>
-              <div className="bg-white rounded-lg shadow">
-                <div className="p-4 border-b border-gray-200">
-                  <h2 className="text-xl font-semibold">Pending Booking Requests</h2>
-                </div>
-                {pendingBookings.length === 0 ? (
-                  <div className="p-6 text-center text-gray-500">
-                    No pending booking requests.
-                  </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-6">
+          {getFilteredBookings().map(booking => (
+            <div key={booking.id} className="bg-white rounded-lg shadow-md overflow-hidden flex flex-col md:flex-row">
+              <div className="md:w-1/3 bg-gray-200">
+                {booking.image ? (
+                  <img
+                    src={booking.image}
+                    alt={`${booking.brand} ${booking.model}`}
+                    className="h-full w-full object-cover"
+                  />
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Renter
-                          </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Car
-                          </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Dates
-                          </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Price
-                          </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Status
-                          </th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Actions
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {pendingBookings.map((booking) => (
-                          <tr key={booking.id}>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm font-medium text-gray-900">{booking.renter_name}</div>
-                              <div className="text-sm text-gray-500">{booking.renter_email}</div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex items-center">
-                                <div className="flex-shrink-0 h-10 w-10">
-                                  <img className="h-10 w-10 rounded-full object-cover" 
-                                    src={booking.image ? `${process.env.REACT_APP_API_URL}/${booking.image}` : 'https://via.placeholder.com/40'} 
-                                    alt="" />
-                                </div>
-                                <div className="ml-4">
-                                  <div className="text-sm font-medium text-gray-900">
-                                    {booking.brand} {booking.model}
-                                  </div>
-                                  <div className="text-sm text-gray-500">
-                                    {booking.year}
-                                  </div>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm text-gray-900">
-                                {formatDate(booking.start_date)} - {formatDate(booking.end_date)}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {booking.total_price} SAR
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={getStatusBadge(booking.status)}>
-                                {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                              <button 
-                                onClick={() => handleAcceptBooking(booking.id)}
-                                className="text-green-600 hover:text-green-900 mr-4"
-                              >
-                                Accept
-                              </button>
-                              <button 
-                                onClick={() => handleRejectBooking(booking.id)}
-                                className="text-red-600 hover:text-red-900"
-                              >
-                                Reject
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="h-full w-full flex items-center justify-center">
+                    <p className="text-gray-500">No image available</p>
                   </div>
                 )}
               </div>
-            </Tab.Panel>
-          )}
-          
-          <Tab.Panel>
-            <div className="bg-white rounded-lg shadow">
-              <div className="p-4 border-b border-gray-200">
-                <h2 className="text-xl font-semibold">Current Bookings</h2>
+              <div className="p-6 md:w-2/3">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h2 className="text-xl font-bold">
+                      {booking.brand} {booking.model} ({booking.year})
+                    </h2>
+                    <p className="text-gray-600 mt-1">
+                      {new Date(booking.start_date).toLocaleDateString()} to {new Date(booking.end_date).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusBadgeClass(booking.status)}`}>
+                    {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <h3 className="text-gray-500 text-sm">Total Price</h3>
+                    <p className="font-medium">${booking.total_price}</p>
+                  </div>
+                  <div>
+                    <h3 className="text-gray-500 text-sm">
+                      {isRenter ? 'Car Owner' : 'Renter'}
+                    </h3>
+                    <p className="font-medium">
+                      {isRenter ? booking.host_name : booking.renter_name}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Action buttons based on role and booking status */}
+                <div className="mt-4 flex space-x-2">
+                  {/* View car details button for both roles */}
+                  <Link 
+                    to={`/cars/${booking.car_id}`}
+                    className="inline-block bg-blue-100 text-blue-700 py-1 px-3 rounded-full text-sm font-medium hover:bg-blue-200 transition"
+                  >
+                    View Car Details
+                  </Link>
+
+                  {/* Host actions */}
+                  {!isRenter && booking.status === 'pending' && (
+                    <>
+                      <button
+                        onClick={() => handleStatusUpdate(booking.id, 'accepted')}
+                        className="bg-green-600 text-white py-1 px-3 rounded-full text-sm font-medium hover:bg-green-700 transition"
+                      >
+                        Accept
+                      </button>
+                      <button
+                        onClick={() => handleStatusUpdate(booking.id, 'rejected')}
+                        className="bg-red-600 text-white py-1 px-3 rounded-full text-sm font-medium hover:bg-red-700 transition"
+                      >
+                        Reject
+                      </button>
+                    </>
+                  )}
+
+                  {/* Renter actions */}
+                  {isRenter && booking.status === 'pending' && (
+                    <button
+                      onClick={() => handleStatusUpdate(booking.id, 'canceled')}
+                      className="bg-gray-600 text-white py-1 px-3 rounded-full text-sm font-medium hover:bg-gray-700 transition"
+                    >
+                      Cancel
+                    </button>
+                  )}
+
+                  {/* Trip completed button for host when trip is current */}
+                  {!isRenter && booking.status === 'accepted' && new Date(booking.end_date) <= currentDate && (
+                    <button
+                      onClick={() => handleStatusUpdate(booking.id, 'completed')}
+                      className="bg-blue-600 text-white py-1 px-3 rounded-full text-sm font-medium hover:bg-blue-700 transition"
+                    >
+                      Mark as Completed
+                    </button>
+                  )}
+                </div>
               </div>
-              {currentBookings.length === 0 ? (
-                <div className="p-6 text-center text-gray-500">
-                  No current bookings.
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          {userRole === 'host' ? 'Renter' : 'Host'}
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Car
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Dates
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Price
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Status
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {currentBookings.map((booking) => (
-                        <tr key={booking.id}>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            {userRole === 'host' ? (
-                              <>
-                                <div className="text-sm font-medium text-gray-900">{booking.renter_name}</div>
-                                <div className="text-sm text-gray-500">{booking.renter_email}</div>
-                              </>
-                            ) : (
-                              <>
-                                <div className="text-sm font-medium text-gray-900">{booking.host_name}</div>
-                                <div className="text-sm text-gray-500">{booking.host_email}</div>
-                              </>
-                            )}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <div className="flex-shrink-0 h-10 w-10">
-                                <img className="h-10 w-10 rounded-full object-cover" 
-                                  src={booking.image ? `${process.env.REACT_APP_API_URL}/${booking.image}` : 'https://via.placeholder.com/40'} 
-                                  alt="" />
-                              </div>
-                              <div className="ml-4">
-                                <div className="text-sm font-medium text-gray-900">
-                                  {booking.brand} {booking.model}
-                                </div>
-                                <div className="text-sm text-gray-500">
-                                  {booking.year}
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
-                              {formatDate(booking.start_date)} - {formatDate(booking.end_date)}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {booking.total_price} SAR
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={getStatusBadge(booking.status)}>
-                              {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
             </div>
-          </Tab.Panel>
-          
-          <Tab.Panel>
-            <div className="bg-white rounded-lg shadow">
-              <div className="p-4 border-b border-gray-200">
-                <h2 className="text-xl font-semibold">Past Bookings</h2>
-              </div>
-              {pastBookings.length === 0 ? (
-                <div className="p-6 text-center text-gray-500">
-                  No past bookings.
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          {userRole === 'host' ? 'Renter' : 'Host'}
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Car
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Dates
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Price
-                        </th>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Status
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {pastBookings.map((booking) => (
-                        <tr key={booking.id}>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            {userRole === 'host' ? (
-                              <>
-                                <div className="text-sm font-medium text-gray-900">{booking.renter_name}</div>
-                                <div className="text-sm text-gray-500">{booking.renter_email}</div>
-                              </>
-                            ) : (
-                              <>
-                                <div className="text-sm font-medium text-gray-900">{booking.host_name}</div>
-                                <div className="text-sm text-gray-500">{booking.host_email}</div>
-                              </>
-                            )}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <div className="flex-shrink-0 h-10 w-10">
-                                <img className="h-10 w-10 rounded-full object-cover" 
-                                  src={booking.image ? `${process.env.REACT_APP_API_URL}/${booking.image}` : 'https://via.placeholder.com/40'} 
-                                  alt="" />
-                              </div>
-                              <div className="ml-4">
-                                <div className="text-sm font-medium text-gray-900">
-                                  {booking.brand} {booking.model}
-                                </div>
-                                <div className="text-sm text-gray-500">
-                                  {booking.year}
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
-                              {formatDate(booking.start_date)} - {formatDate(booking.end_date)}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {booking.total_price} SAR
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={getStatusBadge(booking.status)}>
-                              {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          </Tab.Panel>
-        </Tab.Panels>
-      </Tab.Group>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

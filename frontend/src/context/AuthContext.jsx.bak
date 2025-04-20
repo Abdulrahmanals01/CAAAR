@@ -103,7 +103,7 @@ export const AuthProvider = ({ children }) => {
       const token = localStorage.getItem('token');
 
       const response = await axios.post(
-        'http://localhost:5000/api/auth/switch-role',
+        'http://localhost:5000/api/auth/switch-role', // Updated endpoint to match the logs
         {},
         {
           headers: {
@@ -124,6 +124,11 @@ export const AuthProvider = ({ children }) => {
           ...currentUser,
           role: user.role
         });
+
+        // Force redirect to home page after role switch
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 100);
 
         return { success: true, newRole: user.role };
       } else {

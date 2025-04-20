@@ -4,11 +4,11 @@ const router = express.Router();
 const authRoutes = require('./authRoutes');
 const carRoutes = require('./carRoutes');
 const bookingRoutes = require('./bookingRoutes');
+const roleRoutes = require('./roleRoutes');
 
-// Map routes to their base paths
 router.use('/auth', authRoutes);
-router.use('/users', authRoutes);  // Add this line to handle /api/users/... requests
 router.use('/cars', carRoutes);
 router.use('/bookings', bookingRoutes);
+router.use('/roles', roleRoutes);
 
 module.exports = router;
