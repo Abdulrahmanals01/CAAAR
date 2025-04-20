@@ -1,3 +1,4 @@
+const bookingController = require("../controllers/bookingController");
 const express = require('express');
 const router = express.Router();
 const { body } = require('express-validator');
@@ -38,4 +39,6 @@ router.get('/:id', carController.getCarById);
 // DELETE - Delete car by ID
 router.delete('/:id', authMiddleware.authenticate, authMiddleware.isHost, carController.deleteCar);
 
+// Get car availability
+router.get("/:id/availability", authMiddleware.authenticate, bookingController.getCarAvailability);
 module.exports = router;

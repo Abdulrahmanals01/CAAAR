@@ -10,27 +10,24 @@ const BookingRequests = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [actionError, setActionError] = useState(null);
-  const [refreshKey, setRefreshKey] = useState(0); // Add a refresh key state
-  const [processingBookingId, setProcessingBookingId] = useState(null); // Track which booking is being processed
 
   const fetchBookings = async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-
+      
       if (!token) {
         setError('Authentication required. Please log in.');
         setLoading(false);
         return;
       }
-
+      
       const response = await axios.get(`${API_URL}/api/bookings/user`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
       });
-
-      console.log('Fetched bookings:', response.data);
+      
       setBookings(response.data);
       setError(null);
     } catch (err) {
@@ -43,80 +40,51 @@ const BookingRequests = () => {
 
   useEffect(() => {
     fetchBookings();
-  }, [refreshKey]); // Re-fetch when refreshKey changes
+  }, []);
 
   const handleAcceptBooking = async (bookingId) => {
     setActionError(null);
-    setProcessingBookingId(bookingId); // Set the processing booking ID
-    
     try {
       const result = await updateBookingStatus(bookingId, 'accepted');
-
+      
       if (result.success) {
-        // Add a small delay before refreshing to give the backend time to process
-        setTimeout(() => {
-          setRefreshKey(prevKey => prevKey + 1); // Force a refresh
-        }, 1000);
+        // Refresh all bookings to get the latest status
+        await fetchBookings();
       } else {
         setActionError(result.error || 'Error accepting booking. Please try again.');
-        // If there was a conflict error, refresh to show updated statuses
-        if (result.error && result.error.includes('already been booked')) {
-          setTimeout(() => {
-            setRefreshKey(prevKey => prevKey + 1); // Force a refresh
-          }, 1000);
-        }
       }
     } catch (err) {
       console.error('Error accepting booking:', err);
       setActionError('Failed to accept booking. Please try again.');
-    } finally {
-      setProcessingBookingId(null); // Clear the processing booking ID
     }
   };
 
   const handleRejectBooking = async (bookingId) => {
     setActionError(null);
-    setProcessingBookingId(bookingId); // Set the processing booking ID
-
     try {
       const result = await updateBookingStatus(bookingId, 'rejected');
-
+      
       if (result.success) {
-        // Add a small delay before refreshing
-        setTimeout(() => {
-          setRefreshKey(prevKey => prevKey + 1); // Force a refresh
-        }, 1000);
+        // Refresh all bookings to get the latest status
+        await fetchBookings();
       } else {
         setActionError(result.error || 'Error rejecting booking. Please try again.');
-        // If there was a conflict error, refresh to show updated statuses
-        if (result.error && result.error.includes('already been booked')) {
-          setTimeout(() => {
-            setRefreshKey(prevKey => prevKey + 1); // Force a refresh
-          }, 1000);
-        }
       }
     } catch (err) {
       console.error('Error rejecting booking:', err);
       setActionError('Failed to reject booking. Please try again.');
-    } finally {
-      setProcessingBookingId(null); // Clear the processing booking ID
     }
-  };
-
-  // Add refresh function for manual refreshing
-  const handleRefresh = () => {
-    setRefreshKey(prevKey => prevKey + 1);
   };
 
   // Filter bookings based on active tab
   const pendingBookings = bookings.filter(booking => booking.status === 'pending');
   const currentBookings = bookings.filter(booking => booking.status === 'accepted');
-  const pastBookings = bookings.filter(booking =>
+  const pastBookings = bookings.filter(booking => 
     ['rejected', 'canceled', 'completed'].includes(booking.status)
   );
 
   // Determine which bookings to display based on the active tab
-  const displayedBookings =
+  const displayedBookings = 
     activeTab === 'pending' ? pendingBookings :
     activeTab === 'current' ? currentBookings : pastBookings;
 
@@ -166,19 +134,6 @@ const BookingRequests = () => {
         </nav>
       </div>
 
-      {/* Refresh button */}
-      <div className="mb-4">
-        <button
-          onClick={handleRefresh}
-          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded flex items-center"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-          </svg>
-          Refresh Bookings
-        </button>
-      </div>
-
       {loading ? (
         <div className="flex justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
@@ -205,7 +160,7 @@ const BookingRequests = () => {
                       <h2 className="text-xl font-semibold">{booking.brand || ''} {booking.model || ''} ({booking.year || ''})</h2>
                       <p className="text-gray-600">Renter: {booking.renter_name || 'Unknown'}</p>
                     </div>
-                    <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full
+                    <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
                       ${booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                         booking.status === 'accepted' ? 'bg-green-100 text-green-800' :
                         booking.status === 'rejected' ? 'bg-red-100 text-red-800' :
@@ -241,36 +196,14 @@ const BookingRequests = () => {
                     <div className="mt-6 flex space-x-3">
                       <button
                         onClick={() => handleAcceptBooking(booking.id)}
-                        disabled={processingBookingId === booking.id}
-                        className={`${
-                          processingBookingId === booking.id
-                            ? 'bg-green-300 cursor-not-allowed'
-                            : 'bg-green-500 hover:bg-green-600'
-                        } text-white px-4 py-2 rounded flex items-center`}
+                        className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded"
                       >
-                        {processingBookingId === booking.id && (
-                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                        )}
                         Accept
                       </button>
                       <button
                         onClick={() => handleRejectBooking(booking.id)}
-                        disabled={processingBookingId === booking.id}
-                        className={`${
-                          processingBookingId === booking.id
-                            ? 'bg-red-300 cursor-not-allowed'
-                            : 'bg-red-500 hover:bg-red-600'
-                        } text-white px-4 py-2 rounded flex items-center`}
+                        className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
                       >
-                        {processingBookingId === booking.id && (
-                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                        )}
                         Reject
                       </button>
                     </div>

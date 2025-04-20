@@ -11,7 +11,6 @@ const BookingRequests = () => {
   const [error, setError] = useState(null);
   const [actionError, setActionError] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0); // Add a refresh key state
-  const [processingBookingId, setProcessingBookingId] = useState(null); // Track which booking is being processed
 
   const fetchBookings = async () => {
     try {
@@ -47,8 +46,6 @@ const BookingRequests = () => {
 
   const handleAcceptBooking = async (bookingId) => {
     setActionError(null);
-    setProcessingBookingId(bookingId); // Set the processing booking ID
-    
     try {
       const result = await updateBookingStatus(bookingId, 'accepted');
 
@@ -59,25 +56,15 @@ const BookingRequests = () => {
         }, 1000);
       } else {
         setActionError(result.error || 'Error accepting booking. Please try again.');
-        // If there was a conflict error, refresh to show updated statuses
-        if (result.error && result.error.includes('already been booked')) {
-          setTimeout(() => {
-            setRefreshKey(prevKey => prevKey + 1); // Force a refresh
-          }, 1000);
-        }
       }
     } catch (err) {
       console.error('Error accepting booking:', err);
       setActionError('Failed to accept booking. Please try again.');
-    } finally {
-      setProcessingBookingId(null); // Clear the processing booking ID
     }
   };
 
   const handleRejectBooking = async (bookingId) => {
     setActionError(null);
-    setProcessingBookingId(bookingId); // Set the processing booking ID
-
     try {
       const result = await updateBookingStatus(bookingId, 'rejected');
 
@@ -88,18 +75,10 @@ const BookingRequests = () => {
         }, 1000);
       } else {
         setActionError(result.error || 'Error rejecting booking. Please try again.');
-        // If there was a conflict error, refresh to show updated statuses
-        if (result.error && result.error.includes('already been booked')) {
-          setTimeout(() => {
-            setRefreshKey(prevKey => prevKey + 1); // Force a refresh
-          }, 1000);
-        }
       }
     } catch (err) {
       console.error('Error rejecting booking:', err);
       setActionError('Failed to reject booking. Please try again.');
-    } finally {
-      setProcessingBookingId(null); // Clear the processing booking ID
     }
   };
 
@@ -241,36 +220,14 @@ const BookingRequests = () => {
                     <div className="mt-6 flex space-x-3">
                       <button
                         onClick={() => handleAcceptBooking(booking.id)}
-                        disabled={processingBookingId === booking.id}
-                        className={`${
-                          processingBookingId === booking.id
-                            ? 'bg-green-300 cursor-not-allowed'
-                            : 'bg-green-500 hover:bg-green-600'
-                        } text-white px-4 py-2 rounded flex items-center`}
+                        className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded"
                       >
-                        {processingBookingId === booking.id && (
-                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                        )}
                         Accept
                       </button>
                       <button
                         onClick={() => handleRejectBooking(booking.id)}
-                        disabled={processingBookingId === booking.id}
-                        className={`${
-                          processingBookingId === booking.id
-                            ? 'bg-red-300 cursor-not-allowed'
-                            : 'bg-red-500 hover:bg-red-600'
-                        } text-white px-4 py-2 rounded flex items-center`}
+                        className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
                       >
-                        {processingBookingId === booking.id && (
-                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                        )}
                         Reject
                       </button>
                     </div>

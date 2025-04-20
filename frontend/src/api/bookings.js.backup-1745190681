@@ -1,5 +1,7 @@
 import axios from 'axios';
+
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 // Create a new booking
 export const createBooking = async (bookingData) => {
   try {
@@ -7,12 +9,14 @@ export const createBooking = async (bookingData) => {
     if (!token) {
       return { success: false, error: 'Authentication required' };
     }
+
     const config = {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       }
     };
+
     const response = await axios.post(`${API_URL}/api/bookings`, bookingData, config);
     return { success: true, data: response.data };
   } catch (error) {
@@ -22,6 +26,7 @@ export const createBooking = async (bookingData) => {
     };
   }
 };
+
 // Get user's bookings
 export const getUserBookings = async () => {
   try {
@@ -29,11 +34,13 @@ export const getUserBookings = async () => {
     if (!token) {
       return { success: false, error: 'Authentication required' };
     }
+
     const config = {
       headers: {
         'Authorization': `Bearer ${token}`
       }
     };
+
     const response = await axios.get(`${API_URL}/api/bookings/user`, config);
     return { success: true, data: response.data };
   } catch (error) {
@@ -43,6 +50,7 @@ export const getUserBookings = async () => {
     };
   }
 };
+
 // Update booking status (accept/reject/cancel)
 export const updateBookingStatus = async (bookingId, status) => {
   try {
@@ -50,12 +58,14 @@ export const updateBookingStatus = async (bookingId, status) => {
     if (!token) {
       return { success: false, error: 'Authentication required' };
     }
+
     const config = {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       }
     };
+
     const response = await axios.put(
       `${API_URL}/api/bookings/${bookingId}/status`,
       { status },
@@ -63,7 +73,6 @@ export const updateBookingStatus = async (bookingId, status) => {
     );
     return { success: true, data: response.data };
   } catch (error) {
-    console.log('API error response:', error.response);
     return {
       success: false,
       error: error.response?.data?.message || 'Error updating booking status'

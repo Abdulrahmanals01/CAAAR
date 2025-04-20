@@ -5,7 +5,7 @@ const carController = require('../controllers/carController');
 const authMiddleware = require('../middleware/auth');
 const upload = require('../config/multer');
 
-// GET - Get host's cars (this specific route must come BEFORE the /:id route)
+// GET - Get host's cars (must come BEFORE the /:id route)
 router.get('/owner', authMiddleware.authenticate, authMiddleware.isHost, carController.getHostCars);
 
 // POST - Create a new car listing
@@ -17,7 +17,7 @@ router.post(
   [
     body('brand').notEmpty().withMessage('Brand is required'),
     body('model').notEmpty().withMessage('Model is required'),
-    body('year').isInt({ min: 1900, max: new Date().getFullYear() }).withMessage('Valid year is required'),
+    body('year').isInt({ min: 1900, max: new Date().getFullYear() + 1 }).withMessage('Valid year is required'),
     body('plate').notEmpty().withMessage('Plate number is required'),
     body('color').notEmpty().withMessage('Color is required'),
     body('mileage').isInt({ min: 0 }).withMessage('Valid mileage is required'),
@@ -34,8 +34,8 @@ router.get('/', carController.getCars);
 
 // GET - Get car by ID (public endpoint)
 router.get('/:id', carController.getCarById);
+
 // DELETE - Delete car by ID
 router.delete('/:id', authMiddleware.authenticate, authMiddleware.isHost, carController.deleteCar);
-// DELETE - Delete car by ID
-router.delete('/:id', authMiddleware.authenticate, authMiddleware.isHost, carController.deleteCar);
+
 module.exports = router;
