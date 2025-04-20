@@ -1,8 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { AuthContext } from '../context/AuthContext';
 
 const ListCar = () => {
+  const { currentUser } = useContext(AuthContext);
+  const navigate = useNavigate();
+  
   const [formData, setFormData] = useState({
     brand: '',
     model: '',
@@ -21,32 +25,10 @@ const ListCar = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
-  const navigate = useNavigate();
-
-  // Check if user is logged in and is a host
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    const userRole = localStorage.getItem('userRole');
-    
-    if (!token) {
-      setError('No token, authorization denied');
-      setTimeout(() => {
-        navigate('/login');
-      }, 2000);
-    } else if (userRole !== 'host') {
-      setError('Only hosts can list cars');
-      setTimeout(() => {
-        navigate('/');
-      }, 2000);
-    }
-  }, [navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
+    setFormData({ ...formData, [name]: value });
   };
 
   const handleImageChange = (e) => {
@@ -61,43 +43,42 @@ const ListCar = () => {
     setError('');
     
     try {
-      // Get token from localStorage
       const token = localStorage.getItem('token');
       
       if (!token) {
-        setError('No token, authorization denied');
-        setLoading(false);
+        setError('Authentication required');
         return;
       }
       
-      // Create FormData object to handle file uploads
+      // Create FormData object for file upload
       const carData = new FormData();
       
-      // Add all form fields to FormData
+      // Add form fields to FormData
       Object.keys(formData).forEach(key => {
         carData.append(key, formData[key]);
       });
       
-      // Add image to FormData if provided
+      // Add image if provided
       if (image) {
         carData.append('image', image);
       }
       
-      console.log('Submitting car data...');
-      
-      // Send request with token
-      const response = await axios.post('http://localhost:5000/api/cars', carData, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data'
+      // Make API request to create car listing
+      const response = await axios.post(
+        'http://localhost:5000/api/cars',
+        carData,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          }
         }
-      });
+      );
       
-      console.log('Car listing response:', response.data);
+      console.log('Car listing created:', response.data);
       setSuccess(true);
-      setLoading(false);
       
-      // Reset form after successful submission
+      // Reset form
       setFormData({
         brand: '',
         model: '',
@@ -111,82 +92,78 @@ const ListCar = () => {
         availability_start: new Date().toISOString().split('T')[0],
         availability_end: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0]
       });
+      
       setImage(null);
       
-      // Redirect to car details page after short delay
-      setTimeout(() => {
-        navigate('/');
-      }, 2000);
+      // Redirect after success
+      setTimeout(() => navigate('/dashboard'), 2000);
       
     } catch (err) {
-      setLoading(false);
       console.error('Error listing car:', err);
-      
-      if (err.response) {
-        setError(err.response.data?.message || `Error: ${err.response.status}`);
-        console.log('Error details:', err.response.data);
-      } else if (err.request) {
-        setError('No response from server. Please try again later.');
-      } else {
-        setError('Error: ' + err.message);
-      }
+      setError(err.response?.data?.message || 'Failed to create car listing');
+    } finally {
+      setLoading(false);
     }
   };
 
+  // Protection already applied via HostRoute, this is just an extra check
+  if (currentUser?.role !== 'host') {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded">
+          <p className="font-bold">Access Denied</p>
+          <p>You need to be in host mode to list a car.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow-md">
+    <div className="container mx-auto p-6">
+      <div className="max-w-3xl mx-auto bg-white p-8 rounded-lg shadow-md">
         <h1 className="text-3xl font-bold mb-6 text-center">List Your Car</h1>
         
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded">
             {error}
           </div>
         )}
         
         {success && (
-          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-            Your car has been listed successfully! Redirecting...
+          <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6 rounded">
+            Your car has been listed successfully! Redirecting to dashboard...
           </div>
         )}
         
         <form onSubmit={handleSubmit}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Car Brand */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            {/* Car details form fields */}
             <div>
-              <label className="block text-gray-700 font-medium mb-2">
-                Brand
-              </label>
+              <label className="block text-gray-700 font-semibold mb-2">Brand</label>
               <input
                 type="text"
                 name="brand"
                 value={formData.brand}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
+                className="w-full p-3 border border-gray-300 rounded-md"
               />
             </div>
             
-            {/* Car Model */}
             <div>
-              <label className="block text-gray-700 font-medium mb-2">
-                Model
-              </label>
+              <label className="block text-gray-700 font-semibold mb-2">Model</label>
               <input
                 type="text"
                 name="model"
                 value={formData.model}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
+                className="w-full p-3 border border-gray-300 rounded-md"
               />
             </div>
             
-            {/* Year */}
             <div>
-              <label className="block text-gray-700 font-medium mb-2">
-                Year
-              </label>
+              <label className="block text-gray-700 font-semibold mb-2">Year</label>
               <input
                 type="number"
                 name="year"
@@ -194,162 +171,133 @@ const ListCar = () => {
                 onChange={handleChange}
                 min="1900"
                 max={new Date().getFullYear() + 1}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
+                className="w-full p-3 border border-gray-300 rounded-md"
               />
             </div>
             
-            {/* Color */}
             <div>
-              <label className="block text-gray-700 font-medium mb-2">
-                Color
-              </label>
+              <label className="block text-gray-700 font-semibold mb-2">Color</label>
               <input
                 type="text"
                 name="color"
                 value={formData.color}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
+                className="w-full p-3 border border-gray-300 rounded-md"
               />
             </div>
             
-            {/* License Plate */}
             <div>
-              <label className="block text-gray-700 font-medium mb-2">
-                License Plate
-              </label>
+              <label className="block text-gray-700 font-semibold mb-2">License Plate</label>
               <input
                 type="text"
                 name="plate"
                 value={formData.plate}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
+                className="w-full p-3 border border-gray-300 rounded-md"
               />
             </div>
             
-            {/* Mileage */}
             <div>
-              <label className="block text-gray-700 font-medium mb-2">
-                Mileage (km)
-              </label>
+              <label className="block text-gray-700 font-semibold mb-2">Mileage (km)</label>
               <input
                 type="number"
                 name="mileage"
                 value={formData.mileage}
                 onChange={handleChange}
-                min="0"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
+                min="0"
+                className="w-full p-3 border border-gray-300 rounded-md"
               />
             </div>
             
-            {/* Price per day */}
             <div>
-              <label className="block text-gray-700 font-medium mb-2">
-                Price per day (SAR)
-              </label>
+              <label className="block text-gray-700 font-semibold mb-2">Price per day (SAR)</label>
               <input
                 type="number"
                 name="price_per_day"
                 value={formData.price_per_day}
                 onChange={handleChange}
-                min="1"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
+                min="1"
+                className="w-full p-3 border border-gray-300 rounded-md"
               />
             </div>
             
-            {/* Location */}
             <div>
-              <label className="block text-gray-700 font-medium mb-2">
-                Location
-              </label>
+              <label className="block text-gray-700 font-semibold mb-2">Location</label>
               <input
                 type="text"
                 name="location"
                 value={formData.location}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
                 placeholder="City, neighborhood"
+                className="w-full p-3 border border-gray-300 rounded-md"
               />
             </div>
             
-            {/* Availability Start */}
             <div>
-              <label className="block text-gray-700 font-medium mb-2">
-                Available From
-              </label>
+              <label className="block text-gray-700 font-semibold mb-2">Available From</label>
               <input
                 type="date"
                 name="availability_start"
                 value={formData.availability_start}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
+                className="w-full p-3 border border-gray-300 rounded-md"
               />
             </div>
             
-            {/* Availability End */}
             <div>
-              <label className="block text-gray-700 font-medium mb-2">
-                Available Until
-              </label>
+              <label className="block text-gray-700 font-semibold mb-2">Available Until</label>
               <input
                 type="date"
                 name="availability_end"
                 value={formData.availability_end}
                 onChange={handleChange}
-                min={formData.availability_start}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
+                min={formData.availability_start}
+                className="w-full p-3 border border-gray-300 rounded-md"
               />
             </div>
           </div>
           
           {/* Description */}
-          <div className="mt-6">
-            <label className="block text-gray-700 font-medium mb-2">
-              Description
-            </label>
+          <div className="mb-6">
+            <label className="block text-gray-700 font-semibold mb-2">Description</label>
             <textarea
               name="description"
               value={formData.description}
               onChange={handleChange}
               rows="4"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Describe your car, special features, condition, etc."
+              placeholder="Describe your car, features, condition, etc."
+              className="w-full p-3 border border-gray-300 rounded-md"
             ></textarea>
           </div>
           
           {/* Car Image */}
-          <div className="mt-6">
-            <label className="block text-gray-700 font-medium mb-2">
-              Car Image
-            </label>
+          <div className="mb-6">
+            <label className="block text-gray-700 font-semibold mb-2">Car Image</label>
             <input
               type="file"
               onChange={handleImageChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               accept="image/*"
+              className="w-full p-3 border border-gray-300 rounded-md"
             />
-            <p className="text-sm text-gray-500 mt-1">
-              Upload a clear image of your car
-            </p>
+            <p className="text-sm text-gray-500 mt-2">Upload a clear image of your car</p>
           </div>
           
           {/* Submit Button */}
-          <div className="mt-8">
-            <button
-              type="submit"
-              className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
-              disabled={loading}
-            >
-              {loading ? 'Listing Car...' : 'List Your Car'}
-            </button>
-          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-blue-600 text-white p-3 rounded-md hover:bg-blue-700 transition disabled:opacity-50"
+          >
+            {loading ? 'Creating Listing...' : 'List Your Car'}
+          </button>
         </form>
       </div>
     </div>

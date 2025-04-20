@@ -1,0 +1,56 @@
+import React, { useContext } from 'react';
+import { Link } from 'react-router-dom';
+import { AuthContext } from '../context/AuthContext';
+
+const Dashboard = () => {
+  const { currentUser } = useContext(AuthContext);
+  const userRole = currentUser?.role || localStorage.getItem('userRole');
+  
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-6">Your Dashboard</h1>
+      
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 className="text-xl font-semibold mb-4">Welcome, {currentUser?.name || localStorage.getItem('userName') || 'User'}</h2>
+        <p className="mb-2">You are currently in <span className="font-bold">{userRole}</span> mode.</p>
+        
+        {userRole === 'host' ? (
+          <p>As a host, you can manage your car listings and view booking requests.</p>
+        ) : (
+          <p>As a renter, you can browse cars and manage your bookings.</p>
+        )}
+      </div>
+      
+      {userRole === 'host' ? (
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-semibold mb-4">Host Actions</h2>
+          <div className="flex flex-col space-y-2">
+            <Link to="/list-car" className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-center">
+              List a New Car
+            </Link>
+            <Link to="/host/cars" className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-center">
+              Manage Your Cars
+            </Link>
+            <Link to="/host/bookings" className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded text-center">
+              View Booking Requests
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-semibold mb-4">Renter Actions</h2>
+          <div className="flex flex-col space-y-2">
+            <Link to="/cars/search" className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-center">
+              Find a Car to Rent
+            </Link>
+            <Link to="/renter/bookings" className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded text-center">
+              View Your Bookings
+            </Link>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Dashboard;

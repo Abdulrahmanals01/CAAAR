@@ -1,33 +1,26 @@
-import React, { useEffect, useState } from 'react';
+import React, { useContext } from 'react';
 import { Navigate } from 'react-router-dom';
+import { AuthContext } from '../../context/AuthContext';
 
 const PrivateRoute = ({ children }) => {
-  const [auth, setAuth] = useState({
-    isAuthenticated: false,
-    loading: true
-  });
-
-  useEffect(() => {
-    // Check if token exists in localStorage
-    const token = localStorage.getItem('token');
-    if (token) {
-      setAuth({
-        isAuthenticated: true,
-        loading: false
-      });
-    } else {
-      setAuth({
-        isAuthenticated: false,
-        loading: false
-      });
-    }
-  }, []);
-
-  if (auth.loading) {
-    return <div className="flex justify-center items-center h-screen">Loading...</div>;
+  const { isAuthenticated, loading } = useContext(AuthContext);
+  
+  // Show loading indicator while checking auth
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
   }
-
-  return auth.isAuthenticated ? children : <Navigate to="/login" />;
+  
+  // Redirect to login if not authenticated
+  if (!isAuthenticated) {
+    return <Navigate to="/login" />;
+  }
+  
+  // Render the protected component
+  return children;
 };
 
 export default PrivateRoute;

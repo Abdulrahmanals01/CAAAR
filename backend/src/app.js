@@ -1,81 +1,45 @@
 const express = require('express');
 const cors = require('cors');
-const helmet = require('helmet');
 const morgan = require('morgan');
+const helmet = require('helmet');
 const path = require('path');
 require('dotenv').config();
-// Import routes
-const routes = require('./routes');
+
 // Initialize express app
 const app = express();
-// Security middleware
+
+// Middleware
 app.use(helmet());
-// Enable CORS
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  credentials: true
-}));
-// Request logging
-app.use(morgan('dev'));
-// Body parser middleware - explicitly configure for both JSON and URL-encoded
+app.use(cors());
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-// Log all incoming requests for debugging
-app.use((req, res, next) => {
-  console.log('Request Method:', req.method);
-  console.log('Request Path:', req.path);
-  console.log('Request Headers:', req.headers);
-  console.log('Request Body:', req.body);
-  next();
-});
-// Serve static files from uploads directory
+app.use(express.urlencoded({ extended: false }));
+app.use(morgan('dev'));
+
+// Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// Add debug route for images with full error handling
-app.get('/debug-image/:filename', (req, res) => {
-  const filename = req.params.filename;
-  console.log('Debug image request for:', filename);
-  
-  const filepath = path.join(__dirname, '../uploads/cars/', filename);
-  console.log('Full filepath:', filepath);
-  
-  // Check if the file exists
-  fs.access(filepath, fs.constants.R_OK, (err) => {
-    if (err) {
-      console.error('File access error:', err.message);
-      return res.status(404).send('Image not found');
-    }
-    
-    // If it exists, send the file
-    res.sendFile(filepath, (err) => {
-      if (err) {
-        console.error('Error sending file:', err);
-        return res.status(500).send('Error loading image');
-      }
-      console.log('File sent successfully:', filename);
-    });
-  });
+// Define Routes
+app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/cars', require('./routes/carRoutes'));
+app.use('/api/bookings', require('./routes/bookingRoutes'));
+app.use('/api/roles', require('./routes/roleRoutes')); // New role-related routes
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).send({ message: 'Something went wrong!' });
 });
 
-// Add debug route for images
-app.get('/debug-image/:filename', (req, res) => {
-  const filename = req.params.filename;
-  console.log('Debug image request for:', filename);
-  res.sendFile(path.join(__dirname, '../uploads/cars/', filename));
+// Default route
+app.get('/', (req, res) => {
+  res.json({ message: 'Welcome to Sayarati API' });
 });
-// API routes
-app.use('/api', routes);
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'OK', message: 'Sayarati API is running' });
-});
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({ message: 'Route not found' });
-});
-// Set port and start server
+
+// Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
+// Export the app
 module.exports = app;

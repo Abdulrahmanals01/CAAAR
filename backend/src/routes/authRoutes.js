@@ -1,39 +1,28 @@
 const express = require('express');
-const { body } = require('express-validator');
-const authController = require('../controllers/authController');
-const authMiddleware = require('../middleware/auth');
+const router = express.Router();
+const { register, login, getCurrentUser } = require('../controllers/authController');
+const { switchRole } = require('../controllers/switchRole');
+const { authenticate } = require('../middleware/auth');
 const upload = require('../config/multer');
 
-const router = express.Router();
+// @route   POST api/auth/register
+// @desc    Register a user
+// @access  Public
+router.post('/register', upload.single('licenseImage'), register);
 
-// Register new user
-router.post(
-  '/register',
-  upload.single('license_image'),
-  [
-    body('name').notEmpty().withMessage('Name is required'),
-    body('email').isEmail().withMessage('Invalid email'),
-    body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
-    body('phone').notEmpty().withMessage('Phone number is required'),
-    body('id_number').notEmpty().withMessage('ID number is required')
-  ],
-  authController.register
-);
+// @route   POST api/auth/login
+// @desc    Login user & get token
+// @access  Public
+router.post('/login', login);
 
-// Login user
-router.post(
-  '/login',
-  [
-    body('email').isEmail().withMessage('Invalid email'),
-    body('password').exists().withMessage('Password is required')
-  ],
-  authController.login
-);
+// @route   GET api/auth/me
+// @desc    Get current user
+// @access  Private
+router.get('/me', authenticate, getCurrentUser);
 
-// Get current user
-router.get('/me', authMiddleware.authenticate, authController.getCurrentUser);
+// @route   POST api/auth/switch-role
+// @desc    Switch user role between host and renter
+// @access  Private
+router.post('/switch-role', authenticate, switchRole);
 
-// Switch user role
-router.post('/switch-role', authMiddleware.authenticate, authController.switchRole);
-
-module.exports = router;
+module.exports = router; 
