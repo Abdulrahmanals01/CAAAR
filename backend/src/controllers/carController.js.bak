@@ -6,15 +6,15 @@ const path = require('path');
 // Helper function to format image URLs consistently
 const formatImageUrl = (imagePath) => {
   if (!imagePath) return null;
-
+  
   // Get the base URL
   const baseUrl = process.env.API_URL || "http://localhost:5000";
-
+  
   // Case 1: If it's already a complete URL, return it
   if (imagePath.startsWith("http")) {
     return imagePath;
   }
-
+  
   // Case 2: If it's an absolute path from the filesystem
   if (imagePath.startsWith("/mnt/") || imagePath.startsWith("C:")) {
     // Extract just the filename
@@ -22,12 +22,12 @@ const formatImageUrl = (imagePath) => {
     const filename = parts[parts.length - 1];
     return `${baseUrl}/uploads/cars/${imagePath.split("/").pop()}`;
   }
-
+  
   // Case 3: If it's already a proper relative path
   if (imagePath.startsWith("uploads/")) {
     return `${baseUrl}/${imagePath}`;
   }
-
+  
   // Case 4: If it's just a filename
   return `${baseUrl}/uploads/cars/${imagePath.split("/").pop()}`;
 };
@@ -52,8 +52,7 @@ exports.createCar = async (req, res) => {
       latitude,
       longitude,
       availability_start,
-      availability_end,
-      description
+      availability_end
     } = req.body;
 
     // Check if user is a host
@@ -80,11 +79,11 @@ exports.createCar = async (req, res) => {
       return res.status(400).json({ message: 'Car with this plate number already exists' });
     }
 
-    // Insert car into database (adding description field)
+    // Insert car into database
     const carInsert = await db.query(
       `INSERT INTO cars
-      (user_id, brand, model, year, plate, color, mileage, price_per_day, location, latitude, longitude, availability_start, availability_end, image, description)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      (user_id, brand, model, year, plate, color, mileage, price_per_day, location, latitude, longitude, availability_start, availability_end, image)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
       RETURNING *`,
       [
         req.user.id,
@@ -100,8 +99,7 @@ exports.createCar = async (req, res) => {
         longitude || null,
         availability_start,
         availability_end,
-        image,
-        description
+        image
       ]
     );
 
@@ -126,7 +124,7 @@ exports.getCars = async (req, res) => {
       SELECT c.id, c.brand, c.model, c.year, c.color, c.mileage,
              c.price_per_day, c.location, c.availability_start,
              c.availability_end, c.image, c.created_at, c.user_id,
-             c.description, u.name as host_name, u.id as host_id
+             u.name as host_name, u.id as host_id
       FROM cars c
       JOIN users u ON c.user_id = u.id
       ORDER BY c.created_at DESC
