@@ -118,72 +118,21 @@ exports.createCar = async (req, res) => {
   }
 };
 
-// Get all available cars with optional filtering
+// Get all available cars
 exports.getCars = async (req, res) => {
   try {
-    // Extract filter parameters
-    const {
-      location,
-      brand,
-      min_price,
-      max_price,
-      start_date,
-      end_date
-    } = req.query;
-
-    // Start building the query
-    let queryString = `
+    // Build the query to get all cars with host information
+    const query = `
       SELECT c.id, c.brand, c.model, c.year, c.color, c.mileage,
              c.price_per_day, c.location, c.availability_start,
              c.availability_end, c.image, c.created_at, c.user_id,
              c.description, u.name as host_name, u.id as host_id
       FROM cars c
       JOIN users u ON c.user_id = u.id
-      WHERE 1=1
+      ORDER BY c.created_at DESC
     `;
 
-    // Array to hold the parameters for the query
-    const queryParams = [];
-    let paramCount = 1;
-
-    // Add filters if they exist
-    if (location) {
-      queryString += ` AND c.location ILIKE $${paramCount}`;
-      queryParams.push(`%${location}%`);
-      paramCount++;
-    }
-
-    if (brand) {
-      queryString += ` AND c.brand ILIKE $${paramCount}`;
-      queryParams.push(`%${brand}%`);
-      paramCount++;
-    }
-
-    if (min_price) {
-      queryString += ` AND c.price_per_day >= $${paramCount}`;
-      queryParams.push(parseFloat(min_price));
-      paramCount++;
-    }
-
-    if (max_price) {
-      queryString += ` AND c.price_per_day <= $${paramCount}`;
-      queryParams.push(parseFloat(max_price));
-      paramCount++;
-    }
-
-    if (start_date && end_date) {
-      queryString += ` AND c.availability_start <= $${paramCount} AND c.availability_end >= $${paramCount + 1}`;
-      queryParams.push(end_date, start_date);
-      paramCount += 2;
-    }
-
-    // Order by creation date (newest first)
-    queryString += ` ORDER BY c.created_at DESC`;
-
-    console.log('Car query: ', queryString);
-    console.log('Car query params: ', queryParams);
-
-    const result = await db.query(queryString, queryParams);
+    const result = await db.query(query);
 
     // Format image URLs
     const cars = result.rows.map(car => {

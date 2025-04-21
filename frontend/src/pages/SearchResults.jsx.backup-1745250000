@@ -37,8 +37,8 @@ const SearchResults = () => {
       // For now, we'll just simulate a delay and fetch all cars
       const response = await axios.get('http://localhost:5000/api/cars');
       // Simulate filtering based on location
-      const filteredCars = params.location
-        ? response.data?.filter(car => car.location?.toLowerCase().includes(params.location.toLowerCase()))
+      const filteredCars = params.location 
+        ? response.data?.filter(car => car.location?.toLowerCase().includes(params.location.toLowerCase())) 
         : response.data || [];
       setCars(filteredCars);
       setLoading(false);
@@ -52,7 +52,7 @@ const SearchResults = () => {
   // Handle filter changes
   const handleFilterChange = (e) => {
     const { name, value, type, checked } = e.target;
-
+    
     if (type === 'checkbox') {
       // Handle feature checkboxes
       if (checked) {
@@ -77,36 +77,26 @@ const SearchResults = () => {
 
   // Apply filters to cars
   const filteredCars = cars.filter(car => {
-    // Filter by price - Parse as number to ensure proper comparison
-    const carPrice = parseFloat(car.price_per_day) || 0;
-    const minPrice = parseFloat(filters.priceMin) || 0;
-    const maxPrice = parseFloat(filters.priceMax) || Infinity;
-    
-    if (carPrice < minPrice || carPrice > maxPrice) {
+    // Filter by price
+    const price = car.price_per_day || 0;
+    if (price < filters.priceMin || price > filters.priceMax) {
       return false;
     }
-
+    
     // Filter by car type
     if (filters.carType !== 'all' && car.type !== filters.carType) {
       return false;
     }
-
+    
     // Filter by features
     if (filters.features.length > 0) {
       // For a real app, you would check if the car has all selected features
       // This is just a placeholder implementation
       return true;
     }
-
+    
     return true;
   });
-
-  // Debug information
-  console.log('Current filters:', filters);
-  console.log('Cars before filtering:', cars.length);
-  console.log('Cars after filtering:', filteredCars.length);
-  console.log('Price range:', filters.priceMin, '-', filters.priceMax);
-  console.log('Sample car prices:', cars.slice(0, 3).map(car => car.price_per_day));
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -114,7 +104,7 @@ const SearchResults = () => {
       <div className="mb-8">
         <SearchBar />
       </div>
-
+      
       {/* Search parameters summary */}
       <div className="bg-blue-50 p-4 rounded-lg mb-6">
         <h2 className="text-xl font-semibold mb-2">
@@ -124,13 +114,13 @@ const SearchResults = () => {
           From {searchParams.startDate} {searchParams.startTime} to {searchParams.endDate} {searchParams.endTime}
         </p>
       </div>
-
+      
       <div className="flex flex-col md:flex-row gap-6">
         {/* Filters sidebar */}
         <div className="w-full md:w-1/4">
           <div className="bg-white p-4 rounded-lg shadow-md">
             <h3 className="text-lg font-semibold mb-4">Filters</h3>
-
+            
             {/* Price range */}
             <div className="mb-4">
               <h4 className="font-medium mb-2">Price range</h4>
@@ -142,6 +132,7 @@ const SearchResults = () => {
                   onChange={handleFilterChange}
                   className="w-full p-2 border rounded-md"
                   min="0"
+                  max={filters.priceMax}
                 />
                 <span>to</span>
                 <input
@@ -150,11 +141,11 @@ const SearchResults = () => {
                   value={filters.priceMax}
                   onChange={handleFilterChange}
                   className="w-full p-2 border rounded-md"
-                  min="0"
+                  min={filters.priceMin}
                 />
               </div>
             </div>
-
+            
             {/* Car type */}
             <div className="mb-4">
               <h4 className="font-medium mb-2">Car type</h4>
@@ -172,13 +163,13 @@ const SearchResults = () => {
                 <option value="luxury">Luxury</option>
               </select>
             </div>
-
+            
             {/* Features */}
             <div className="mb-4">
               <h4 className="font-medium mb-2">Features</h4>
               <div className="space-y-2">
                 <label className="flex items-center">
-                  <input
+                  <input 
                     type="checkbox"
                     name="air_conditioning"
                     checked={filters.features.includes('air_conditioning')}
@@ -188,7 +179,7 @@ const SearchResults = () => {
                   Air conditioning
                 </label>
                 <label className="flex items-center">
-                  <input
+                  <input 
                     type="checkbox"
                     name="bluetooth"
                     checked={filters.features.includes('bluetooth')}
@@ -198,7 +189,7 @@ const SearchResults = () => {
                   Bluetooth
                 </label>
                 <label className="flex items-center">
-                  <input
+                  <input 
                     type="checkbox"
                     name="navigation"
                     checked={filters.features.includes('navigation')}
@@ -208,7 +199,7 @@ const SearchResults = () => {
                   Navigation system
                 </label>
                 <label className="flex items-center">
-                  <input
+                  <input 
                     type="checkbox"
                     name="child_seat"
                     checked={filters.features.includes('child_seat')}
@@ -221,7 +212,7 @@ const SearchResults = () => {
             </div>
           </div>
         </div>
-
+        
         {/* Car listings */}
         <div className="w-full md:w-3/4">
           {loading ? (
@@ -230,7 +221,7 @@ const SearchResults = () => {
             <div className="bg-white p-6 rounded-lg shadow-md text-center">
               <h3 className="text-xl font-semibold mb-2">No cars found</h3>
               <p className="text-gray-600 mb-4">Try adjusting your search parameters or filters</p>
-              <Link
+              <Link 
                 to="/"
                 className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
               >
@@ -240,31 +231,17 @@ const SearchResults = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {filteredCars.map((car, index) => (
-                <div key={car.id || index} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-                  {car.image_url ? (
-                    <img 
-                      src={car.image_url} 
-                      alt={`${car.brand} ${car.model}`}
-                      className="w-full h-48 object-cover"
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = "https://via.placeholder.com/400x300?text=Car+Image";
-                      }}
-                    />
-                  ) : (
-                    <div className="h-48 bg-gray-200 flex items-center justify-center">
-                      <span className="text-gray-500">No image available</span>
-                    </div>
-                  )}
+                <div key={index} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+                  <div className="h-48 bg-gray-200"></div>
                   <div className="p-4">
                     <div className="flex justify-between items-start">
                       <div>
-                        <h3 className="font-bold text-lg">{car.brand || 'Brand'} {car.model || 'Model'}</h3>
+                        <h3 className="font-bold text-lg">{car.make || 'Brand'} {car.model || 'Model'}</h3>
                         <p className="text-gray-600">{car.year || '2023'}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-green-600 font-bold">${car.price_per_day || '50'}/day</p>
-                        <p className="text-gray-500 text-sm">Total: ${Math.round((parseFloat(car.price_per_day) || 50) * 3)}</p>
+                        <p className="text-gray-500 text-sm">Total: ${(car.price_per_day || 50) * 3}</p>
                       </div>
                     </div>
                     <div className="mt-4 flex items-center text-sm text-gray-600">
@@ -277,12 +254,12 @@ const SearchResults = () => {
                     <div className="mt-4 flex justify-between">
                       <div className="flex items-center text-sm">
                         <span className="text-yellow-500 flex">
-                          {'★'.repeat(5)}
+                          {'★'.repeat(5)} 
                         </span>
                         <span className="ml-1">(27)</span>
                       </div>
-                      <Link
-                        to={`/cars/${car.id || index}`}
+                      <Link 
+                        to={`/cars/${car.id || index}`} 
                         className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
                       >
                         View Details
