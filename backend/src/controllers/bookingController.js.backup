@@ -11,9 +11,9 @@ exports.createBooking = async (req, res) => {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
-    // Check if the user is trying to book their own car
+        // Check if the user is trying to book their own car
     const carOwnerCheck = await db.query(
-      'SELECT user_id FROM cars WHERE id = $1',
+      'SELECT user_id FROM cars WHERE id = ',
       [car_id]
     );
 
@@ -29,8 +29,7 @@ exports.createBooking = async (req, res) => {
         message: 'You cannot book your own car'
       });
     }
-
-    // Check if car is already booked for these dates
+// Check if car is already booked for these dates
     const availabilityCheck = await db.query(
       'SELECT * FROM is_car_available($1, $2, $3) as available',
       [car_id, start_date, end_date]
@@ -437,5 +436,4 @@ exports.getCarAvailability = async (req, res) => {
     res.status(500).json({ message: 'Server error while getting car availability' });
   }
 }
-
 

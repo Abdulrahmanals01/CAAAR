@@ -11,10 +11,10 @@ const BookingForm = ({ car, isHost }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
-  const [totalPrice, setTotalPrice] = useState(0);
+    const [totalPrice, setTotalPrice] = useState(0);
   
   // Get user ID from localStorage to check if user is car owner
-  const userId = parseInt(localStorage.getItem("userId")) || 0;
+  const userId = parseInt(localStorage.getItem('userId')) || 0;
   const isOwnCar = car && car.user_id === userId;
 
   // Set initial dates to car's availability period
@@ -25,7 +25,7 @@ const BookingForm = ({ car, isHost }) => {
       
       // Choose the later date between today and availability_start
       const startDate = today > availabilityStart ? today : availabilityStart;
-
+      
       setFormData({
         start_date: startDate,
         end_date: car.availability_end,
@@ -55,13 +55,6 @@ const BookingForm = ({ car, isHost }) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    
-    // Prevent booking own car
-    if (isOwnCar) {
-      setError('You cannot book your own car');
-      setLoading(false);
-      return;
-    }
 
     try {
       const bookingData = {
@@ -86,7 +79,7 @@ const BookingForm = ({ car, isHost }) => {
     }
   };
 
-  // Don't show booking form for hosts, car owners, or if the car details aren't loaded
+  // Don't show booking form for hosts or if the car details aren't loaded
   if (isHost || isOwnCar || !car) {
     return null;
   }
@@ -162,3 +155,4 @@ const BookingForm = ({ car, isHost }) => {
 };
 
 export default BookingForm;
+
