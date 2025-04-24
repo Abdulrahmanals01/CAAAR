@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { register, login, getCurrentUser } = require('../controllers/authController');
-const { switchRole } = require('../controllers/switchRole');
+const { register, login, getCurrentUser, switchRole } = require('../controllers/authController');
 const { authenticate } = require('../middleware/auth');
 const upload = require('../config/multer');
 
@@ -25,4 +24,4 @@ router.get('/me', authenticate, getCurrentUser);
 // @access  Private
 router.post('/switch-role', authenticate, switchRole);
 
-module.exports = router; 
+module.exports = router;

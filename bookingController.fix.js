@@ -1,0 +1,100 @@
+// Only modify the updateBookingStatus function, keeping everything else the same
+exports.updateBookingStatus = async (req, res) => {
+  try {
+    const bookingId = req.params.id;
+    const { status } = req.body;
+    const userId = req.user.id;
+
+    console.log(`Updating booking ${bookingId} to status: ${status}`);
+
+    // Special handling for cancellation
+    if (status === 'canceled') {
+      return cancelBooking(req, res, bookingId);
+    }
+
+    // Special handling for acceptance
+    if (status === 'accepted') {
+      return acceptBooking(req, res, bookingId);
+    }
+
+    // Special handling for rejection
+    if (status === 'rejected') {
+      return rejectBooking(req, res, bookingId);
+    }
+
+    // For other statuses, continue with normal update
+    if (!['pending', 'completed'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid status' });
+    }
+
+    // For completed status, we need to temporarily disable the trigger
+    if (status === 'completed') {
+      const client = await db.pool.connect();
+      try {
+        await client.query('BEGIN');
+        
+        // Get booking details first for verification
+        const bookingResult = await client.query(
+          'SELECT b.*, c.user_id AS host_id FROM bookings b JOIN cars c ON b.car_id = c.id WHERE b.id = $1',
+          [bookingId]
+        );
+        
+        if (bookingResult.rows.length === 0) {
+          await client.query('ROLLBACK');
+          return res.status(404).json({ message: 'Booking not found' });
+        }
+        
+        // Verify the user is the host
+        const booking = bookingResult.rows[0];
+        if (booking.host_id !== userId) {
+          await client.query('ROLLBACK');
+          return res.status(403).json({ message: 'Only the car owner can mark bookings as completed' });
+        }
+        
+        // Temporarily disable trigger
+        await client.query('ALTER TABLE bookings DISABLE TRIGGER check_booking_availability');
+        
+        // Update booking
+        const result = await client.query(
+          'UPDATE bookings SET status = $1 WHERE id = $2 RETURNING *',
+          [status, bookingId]
+        );
+        
+        // Re-enable trigger
+        await client.query('ALTER TABLE bookings ENABLE TRIGGER check_booking_availability');
+        
+        await client.query('COMMIT');
+        
+        console.log('Booking completed successfully:', result.rows[0]);
+        return res.json(result.rows[0]);
+      } catch (err) {
+        await client.query('ROLLBACK');
+        // Make sure to re-enable the trigger even if there's an error
+        try {
+          await client.query('ALTER TABLE bookings ENABLE TRIGGER check_booking_availability');
+        } catch (enableErr) {
+          console.error('Error re-enabling trigger:', enableErr);
+        }
+        throw err;
+      } finally {
+        client.release();
+      }
+    } else {
+      // For other statuses, use normal update
+      const result = await db.query(
+        'UPDATE bookings SET status = $1 WHERE id = $2 RETURNING *',
+        [status, bookingId]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ message: 'Booking not found' });
+      }
+
+      console.log('Booking updated successfully:', result.rows[0]);
+      return res.json(result.rows[0]);
+    }
+  } catch (err) {
+    console.error('Error updating booking status:', err);
+    res.status(500).json({ message: 'Server error while updating booking status' });
+  }
+};

@@ -1,10 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { ChatContext } from '../../context/ChatContext';
 
 const Navbar = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  
+  // Get unread count from chat context
+  const chatContext = useContext(ChatContext);
+  const unreadCount = chatContext?.unreadCount || 0;
 
   const isAuthenticated = localStorage.getItem('token') !== null;
   const userRole = localStorage.getItem('userRole');
@@ -23,11 +28,14 @@ const Navbar = () => {
     try {
       const token = localStorage.getItem("token");
       console.log("Current role before switch:", userRole);
+      
+      // Get the new role (opposite of current role)
+      const newRole = userRole === 'host' ? 'renter' : 'host';
 
-      // Using the same /api/auth path as the login endpoint
+      // Using the switch-role endpoint
       const response = await axios.post(
         "http://localhost:5000/api/auth/switch-role",
-        {}, // Empty object - backend will toggle the role automatically
+        { newRole }, // Add the newRole to match the backend expectation
         {
           headers: {
             "Content-Type": "application/json",
@@ -44,7 +52,7 @@ const Navbar = () => {
       localStorage.setItem("userName", response.data.user.name || userName);
 
       console.log("Role switched successfully to:", response.data.user.role);
-      
+
       // Navigate to the home page instead of just reloading
       window.location.href = '/';
     } catch (error) {
@@ -76,6 +84,19 @@ const Navbar = () => {
         </div>
 
         <div className="flex items-center space-x-4">
+          {isAuthenticated && (
+            <Link to="/messages" className="relative hover:text-blue-200">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+              </svg>
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full text-xs w-4 h-4 flex items-center justify-center">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </Link>
+          )}
+          
           {isAuthenticated ? (
             <>
               {userRole && (

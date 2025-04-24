@@ -1,78 +1,77 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
-import Navbar from './components/common/Navbar';
-import PrivateRoute from './components/common/PrivateRoute';
-import HostRoute from './components/common/HostRoute';
+import { ChatProvider } from './context/ChatContext';
+import Header from './components/Header';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import CarDetails from './pages/CarDetails';
 import Dashboard from './pages/Dashboard';
 import ListCar from './pages/ListCar';
-import ManageCars from './pages/ManageCars';
+import PrivateRoute from './components/common/PrivateRoute';
+import CarSearch from './pages/CarSearch';
 import BookingHistory from './pages/BookingHistory';
 import BookingRequests from './pages/BookingRequests';
-import CarDetails from './pages/CarDetails';
 import SearchResults from './pages/SearchResults';
+import ManageCars from './pages/ManageCars';
 import NotFound from './pages/NotFound';
+import UserProfile from './pages/UserProfile';
+import HostDashboard from './pages/dashboard/HostDashboard';
+import RenterDashboard from './pages/dashboard/RenterDashboard';
+
+// Import chat pages
+import Inbox from './pages/chat/Inbox';
+import Conversation from './pages/chat/Conversation';
 
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <div className="min-h-screen bg-gray-50 flex flex-col">
-          <Navbar />
-          <main className="flex-grow">
+      <ChatProvider>
+        <Router>
+          <div className="min-h-screen bg-gray-50">
+            <Header />
             <Routes>
-              {/* Public Routes */}
               <Route path="/" element={<Home />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/cars/:id" element={<CarDetails />} />
-              <Route path="/cars/search" element={<SearchResults />} />
               
-              {/* Protected Routes */}
-              <Route path="/dashboard" element={
-                <PrivateRoute>
-                  <Dashboard />
-                </PrivateRoute>
-              } />
+              {/* Car search routes */}
+              <Route path="/cars" element={<CarSearch />} />
+              <Route path="/cars/search" element={<CarSearch />} />
+              <Route path="/search" element={<CarSearch />} />
               
-              <Route path="/list-car" element={
-                <HostRoute>
-                  <ListCar />
-                </HostRoute>
-              } />
+              <Route path="/searchresults" element={<SearchResults />} />
               
-              <Route path="/manage-cars" element={
-                <HostRoute>
-                  <ManageCars />
-                </HostRoute>
-              } />
+              {/* Dashboard routes */}
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/dashboard/host" element={<HostDashboard />} />
+              <Route path="/dashboard/renter" element={<RenterDashboard />} />
               
-              <Route path="/booking-history" element={
-                <PrivateRoute>
-                  <BookingHistory />
-                </PrivateRoute>
-              } />
+              {/* Fix: List car routes */}
+              <Route path="/list-car" element={<PrivateRoute element={<ListCar />} />} />
+              <Route path="/listcar" element={<PrivateRoute element={<ListCar />} />} />
               
-              <Route path="/booking-requests" element={
-                <HostRoute>
-                  <BookingRequests />
-                </HostRoute>
-              } />
+              <Route path="/booking-history" element={<PrivateRoute element={<BookingHistory />} />} />
+              <Route path="/bookinghistory" element={<PrivateRoute element={<BookingHistory />} />} />
               
-              {/* 404 Route */}
+              <Route path="/bookingrequests" element={<PrivateRoute element={<BookingRequests />} />} />
+              <Route path="/booking-requests" element={<PrivateRoute element={<BookingRequests />} />} />
+              
+              <Route path="/manage-cars" element={<PrivateRoute element={<ManageCars />} />} />
+              <Route path="/managecars" element={<PrivateRoute element={<ManageCars />} />} />
+              
+              {/* Chat routes */}
+              <Route path="/messages" element={<Inbox />} />
+              <Route path="/messages/:userId" element={<Conversation />} />
+              
+              <Route path="/profile/:userId" element={<UserProfile />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </main>
-          <footer className="bg-gray-800 text-white p-6">
-            <div className="container mx-auto">
-              <p className="text-center">&copy; {new Date().getFullYear()} Sayarati. All rights reserved.</p>
-            </div>
-          </footer>
-        </div>
-      </Router>
+          </div>
+        </Router>
+      </ChatProvider>
     </AuthProvider>
   );
 }

@@ -2,8 +2,8 @@ import React, { useContext } from 'react';
 import { Navigate } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 
-const PrivateRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useContext(AuthContext);
+const PrivateRoute = ({ element, requiredRole }) => {
+  const { isAuthenticated, loading, currentUser } = useContext(AuthContext);
   
   // Show loading indicator while checking auth
   if (loading) {
@@ -19,8 +19,13 @@ const PrivateRoute = ({ children }) => {
     return <Navigate to="/login" />;
   }
   
+  // Check for required role if specified
+  if (requiredRole && currentUser && currentUser.role !== requiredRole) {
+    return <Navigate to="/" />;
+  }
+  
   // Render the protected component
-  return children;
+  return element;
 };
 
 export default PrivateRoute;

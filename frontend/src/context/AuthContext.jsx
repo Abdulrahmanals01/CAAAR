@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect } from 'react';
 import axios from 'axios';
+import { setToken, getToken, clearAuth, setUserData, getUserData, initAuthHeaders } from '../utils/auth';
 
 // Create the auth context
 export const AuthContext = createContext();
@@ -12,19 +13,26 @@ export const AuthProvider = ({ children }) => {
 
   // Initialize auth state from localStorage
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      const userRole = localStorage.getItem('userRole');
-      const userName = localStorage.getItem('userName');
-
-      setIsAuthenticated(true);
-      setCurrentUser({
-        role: userRole,
-        name: userName
-      });
-    }
-
-    setLoading(false);
+    const initAuth = () => {
+      const token = getToken();
+      if (token) {
+        const userData = getUserData();
+        
+        // Initialize axios headers
+        initAuthHeaders();
+        
+        setIsAuthenticated(true);
+        setCurrentUser({
+          id: userData.id,
+          role: userData.role,
+          name: userData.name
+        });
+      }
+      
+      setLoading(false);
+    };
+    
+    initAuth();
   }, []);
 
   // Log in a user
@@ -40,10 +48,9 @@ export const AuthProvider = ({ children }) => {
 
       const { token, user } = response.data;
 
-      // Save to localStorage
-      localStorage.setItem('token', token);
-      localStorage.setItem('userRole', user.role);
-      localStorage.setItem('userName', user.name);
+      // Save auth data
+      setToken(token);
+      setUserData(user);
 
       // Update state
       setIsAuthenticated(true);
@@ -51,6 +58,7 @@ export const AuthProvider = ({ children }) => {
 
       return true;
     } catch (err) {
+      console.error('Login error:', err);
       setError(err.response?.data?.message || 'Login failed');
       return false;
     } finally {
@@ -76,10 +84,9 @@ export const AuthProvider = ({ children }) => {
 
       const { token, user } = response.data;
 
-      // Save to localStorage
-      localStorage.setItem('token', token);
-      localStorage.setItem('userRole', user.role);
-      localStorage.setItem('userName', user.name);
+      // Save auth data
+      setToken(token);
+      setUserData(user);
 
       // Update state
       setIsAuthenticated(true);
@@ -87,6 +94,7 @@ export const AuthProvider = ({ children }) => {
 
       return true;
     } catch (err) {
+      console.error('Registration error:', err);
       setError(err.response?.data?.message || 'Registration failed');
       return false;
     } finally {
@@ -100,24 +108,29 @@ export const AuthProvider = ({ children }) => {
     setError(null);
 
     try {
-      const token = localStorage.getItem('token');
+      const token = getToken();
+      const currentRole = localStorage.getItem('userRole');
+      const newRole = currentRole === 'host' ? 'renter' : 'host';
+
+      console.log('Switching role from', currentRole, 'to', newRole);
 
       const response = await axios.post(
         'http://localhost:5000/api/auth/switch-role',
-        {},
+        { newRole },
         {
           headers: {
+            'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           }
         }
       );
 
-      if (response.data.success) {
+      if (response.data.token) {
         const { token, user } = response.data;
 
-        // Update localStorage
-        localStorage.setItem('token', token);
-        localStorage.setItem('userRole', user.role);
+        // Save updated auth data
+        setToken(token);
+        setUserData(user);
 
         // Update state
         setCurrentUser({
@@ -127,9 +140,10 @@ export const AuthProvider = ({ children }) => {
 
         return { success: true, newRole: user.role };
       } else {
-        throw new Error(response.data.message);
+        throw new Error(response.data.message || 'Failed to switch role');
       }
     } catch (err) {
+      console.error('Error switching role:', err);
       setError(err.response?.data?.message || 'Failed to switch role');
       return { success: false, error: err.message };
     } finally {
@@ -139,10 +153,8 @@ export const AuthProvider = ({ children }) => {
 
   // Log out
   const logout = () => {
-    // Clear localStorage
-    localStorage.removeItem('token');
-    localStorage.removeItem('userRole');
-    localStorage.removeItem('userName');
+    // Clear auth data
+    clearAuth();
 
     // Reset state
     setIsAuthenticated(false);

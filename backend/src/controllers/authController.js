@@ -19,9 +19,9 @@ exports.register = async (req, res) => {
 
   try {
     // Check if user already exists
-    const userExists = await db.query('SELECT * FROM users WHERE email = $1', [email]); 
+    const userExists = await db.query('SELECT * FROM users WHERE email = $1', [email]);
     if (userExists.rows.length > 0) {
-      return res.status(400).json({ message: 'User already exists with this email' });  
+      return res.status(400).json({ message: 'User already exists with this email' });
     }
 
     // Hash password
@@ -45,7 +45,7 @@ exports.register = async (req, res) => {
     jwt.sign(
       payload,
       process.env.JWT_SECRET,
-      { expiresIn: '24h' },
+      { expiresIn: '30d' }, // Extended to 30 days
       (err, token) => {
         if (err) throw err;
         res.status(201).json({
@@ -76,7 +76,7 @@ exports.login = async (req, res) => {
 
   try {
     // Check if user exists
-    const result = await db.query('SELECT * FROM users WHERE email = $1', [email]);     
+    const result = await db.query('SELECT * FROM users WHERE email = $1', [email]);
     if (result.rows.length === 0) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
@@ -100,7 +100,7 @@ exports.login = async (req, res) => {
     jwt.sign(
       payload,
       process.env.JWT_SECRET,
-      { expiresIn: '24h' },
+      { expiresIn: '30d' }, // Extended to 30 days
       (err, token) => {
         if (err) throw err;
         res.json({
@@ -139,37 +139,54 @@ exports.getCurrentUser = async (req, res) => {
   }
 };
 
-// Add this function to allow users to switch roles
+// Switch user role function
 exports.switchRole = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { newRole } = req.body;
     
+    // If newRole is not provided, toggle between host and renter
+    let newRole;
+    if (req.body.newRole) {
+      newRole = req.body.newRole;
+    } else {
+      // Get the current role
+      const userResult = await db.query('SELECT role FROM users WHERE id = $1', [userId]);
+      if (userResult.rows.length === 0) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      
+      const currentRole = userResult.rows[0].role;
+      newRole = currentRole === 'host' ? 'renter' : 'host';
+    }
+
+    console.log(`Switching role for user ${userId} to ${newRole}`);
+
     // Validate the new role
     if (newRole !== 'host' && newRole !== 'renter') {
       return res.status(400).json({ message: 'Invalid role. Must be either "host" or "renter".' });
     }
-    
+
     // Update the user's role in the database
     const result = await db.query(
-      'UPDATE users SET role = $1 WHERE id = $2 RETURNING id, email, name, role',
+      'UPDATE users SET role = $1 WHERE id = $2 RETURNING id, name, email, role',
       [newRole, userId]
     );
-    
+
     if (result.rows.length === 0) {
       return res.status(404).json({ message: 'User not found' });
     }
-    
+
     const updatedUser = result.rows[0];
-    
+
     // Generate a new token with the updated role
     const token = jwt.sign(
       { user: { id: updatedUser.id, role: updatedUser.role } },
       process.env.JWT_SECRET,
-      { expiresIn: '1d' }
+      { expiresIn: '30d' } // Extended to 30 days
     );
-    
+
     res.json({
+      success: true,
       token,
       user: {
         id: updatedUser.id,

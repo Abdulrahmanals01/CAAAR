@@ -1,0 +1,18 @@
+// Add these routes to your bookingRoutes.js
+
+// Mark booking as completed
+router.put('/:id/complete', authMiddleware.authenticate, bookingController.completeBooking);
+
+// Start trip (for renter)
+router.put('/:id/start', authMiddleware.authenticate, bookingController.startTrip);
+
+// End trip early (for host)
+router.put('/:id/end-early', authMiddleware.authenticate, bookingController.endTripEarly);
+
+// Upload inspection photos (before trip)
+router.post('/:id/photos/before', authMiddleware.authenticate, 
+  upload.array('photos', 10), bookingController.uploadInspectionPhotos);
+
+// Upload inspection photos (after trip)
+router.post('/:id/photos/after', authMiddleware.authenticate, 
+  upload.array('photos', 10), bookingController.uploadInspectionPhotos);
