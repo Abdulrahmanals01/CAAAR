@@ -22,15 +22,19 @@ const RoleSwitcher = () => {
         const { token, user: updatedUser } = response.data;
         localStorage.setItem('token', token);
         localStorage.setItem('user', JSON.stringify(updatedUser));
-
+        
         // Update axios default headers
         axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-
+        
         // Update user in context
         updateUser(updatedUser);
-
-        // Navigate to home page instead of dashboard
-        navigate('/');
+        
+        // Navigate to dashboard based on role
+        if (newRole === 'host') {
+          navigate('/dashboard/host');
+        } else {
+          navigate('/dashboard/renter');
+        }
       }
     } catch (error) {
       console.error('Error switching role:', error);

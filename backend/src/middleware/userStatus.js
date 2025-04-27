@@ -4,8 +4,9 @@ exports.checkUserStatus = async (req, res, next) => {
   try {
     const userId = req.user.id;
     
+    // Get user status from database
     const result = await db.query(
-      'SELECT status, freeze_until FROM users WHERE id = $1',
+      'SELECT status, ban_reason, freeze_reason, freeze_until FROM users WHERE id = $1',
       [userId]
     );
     
@@ -15,32 +16,37 @@ exports.checkUserStatus = async (req, res, next) => {
     
     const user = result.rows[0];
     
+    // Check if user is banned
     if (user.status === 'banned') {
       return res.status(403).json({ 
-        message: 'Your account has been banned. Please contact support.'
+        message: 'Your account has been banned',
+        reason: user.ban_reason,
+        status: 'banned'
       });
     }
     
+    // Check if user is frozen
     if (user.status === 'frozen') {
-      const now = new Date();
-      const freezeUntil = new Date(user.freeze_until);
-      
-      if (now < freezeUntil) {
-        return res.status(403).json({ 
-          message: `Your account is frozen until ${freezeUntil.toLocaleDateString()}. Please contact support.`
-        });
-      } else {
-        // Unfreeze if time has passed
+      // Check if freeze period has expired
+      if (user.freeze_until && new Date(user.freeze_until) < new Date()) {
+        // Automatically unfreeze the user
         await db.query(
           'UPDATE users SET status = $1, freeze_until = NULL, freeze_reason = NULL WHERE id = $2',
           ['active', userId]
         );
+      } else {
+        return res.status(403).json({ 
+          message: 'Your account has been frozen',
+          reason: user.freeze_reason,
+          until: user.freeze_until,
+          status: 'frozen'
+        });
       }
     }
     
     next();
   } catch (error) {
     console.error('Error checking user status:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    res.status(500).json({ message: 'Server error while checking user status' });
   }
 };
