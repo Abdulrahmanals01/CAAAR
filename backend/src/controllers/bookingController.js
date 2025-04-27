@@ -113,10 +113,11 @@ exports.getUserBookings = async (req, res) => {
         ORDER BY b.created_at DESC
       `;
       params = [userId];
-    } else {
+    } else if (userRole === 'host') {
+      // For hosts, get all bookings for their cars
       query = `
         SELECT b.*, c.brand, c.model, c.year, c.price_per_day, c.image,
-          u.name as renter_name, b.renter_id
+          u.name as renter_name, b.renter_id, c.user_id as host_id
         FROM bookings b
         JOIN cars c ON b.car_id = c.id
         JOIN users u ON b.renter_id = u.id
@@ -124,10 +125,25 @@ exports.getUserBookings = async (req, res) => {
         ORDER BY b.created_at DESC
       `;
       params = [userId];
+    } else {
+      // For other roles, return both renter and host bookings
+      query = `
+        SELECT b.*, c.brand, c.model, c.year, c.price_per_day, c.image,
+          u_renter.name as renter_name, b.renter_id,
+          u_host.name as host_name, c.user_id as host_id
+        FROM bookings b
+        JOIN cars c ON b.car_id = c.id
+        JOIN users u_renter ON b.renter_id = u_renter.id
+        JOIN users u_host ON c.user_id = u_host.id
+        WHERE (b.renter_id = $1 OR c.user_id = $1)
+        ORDER BY b.created_at DESC
+      `;
+      params = [userId];
     }
 
+    console.log('Booking query:', query);
     const bookings = await db.query(query, params);
-    console.log(`Found ${bookings.rows.length} bookings`);
+    console.log(`Found ${bookings.rows.length} bookings for user ${userId}`);
 
     res.json(bookings.rows);
   } catch (err) {
@@ -170,39 +186,39 @@ exports.updateBookingStatus = async (req, res) => {
       const client = await db.pool.connect();
       try {
         await client.query('BEGIN');
-        
+
         // Get booking details first for verification
         const bookingResult = await client.query(
           'SELECT b.*, c.user_id AS host_id FROM bookings b JOIN cars c ON b.car_id = c.id WHERE b.id = $1',
           [bookingId]
         );
-        
+
         if (bookingResult.rows.length === 0) {
           await client.query('ROLLBACK');
           return res.status(404).json({ message: 'Booking not found' });
         }
-        
+
         // Verify the user is the host
         const booking = bookingResult.rows[0];
         if (booking.host_id !== userId) {
           await client.query('ROLLBACK');
           return res.status(403).json({ message: 'Only the car owner can mark bookings as completed' });
         }
-        
+
         // Temporarily disable trigger
         await client.query('ALTER TABLE bookings DISABLE TRIGGER check_booking_availability');
-        
+
         // Update booking
         const result = await client.query(
           'UPDATE bookings SET status = $1 WHERE id = $2 RETURNING *',
           [status, bookingId]
         );
-        
+
         // Re-enable trigger
         await client.query('ALTER TABLE bookings ENABLE TRIGGER check_booking_availability');
-        
+
         await client.query('COMMIT');
-        
+
         console.log('Booking completed successfully:', result.rows[0]);
         return res.json(result.rows[0]);
       } catch (err) {

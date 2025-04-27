@@ -1,4 +1,3 @@
-const userStatusMiddleware = require('../middleware/userStatus');
 const { validationResult } = require('express-validator');
 const db = require('../config/database');
 const fs = require('fs');
@@ -31,21 +30,6 @@ const formatImageUrl = (imagePath) => {
 
   // Case 4: If it's just a filename
   return `${baseUrl}/uploads/cars/${imagePath.split("/").pop()}`;
-};
-
-// Helper function to check for active bookings
-const hasActiveBookings = async (carId) => {
-  const currentDate = new Date().toISOString().split('T')[0]; // Today's date in YYYY-MM-DD
-  
-  const activeBookingsQuery = `
-    SELECT COUNT(*) as booking_count 
-    FROM bookings 
-    WHERE car_id = $1 
-    AND status = 'accepted' 
-    AND end_date >= $2`;
-  
-  const result = await db.query(activeBookingsQuery, [carId, currentDate]);
-  return result.rows[0].booking_count > 0;
 };
 
 // Create a new car listing
@@ -304,15 +288,6 @@ exports.deleteCar = async (req, res) => {
       }
     }
 
-    // Check for active bookings
-    const activeBookings = await hasActiveBookings(carId);
-    
-    if (activeBookings) {
-      return res.status(400).json({ 
-        message: 'Cannot delete car with active bookings. You must wait until all current bookings are completed.'
-      });
-    }
-
     // Delete the car from the database
     await db.query('DELETE FROM cars WHERE id = $1', [carId]);
 
@@ -320,122 +295,5 @@ exports.deleteCar = async (req, res) => {
   } catch (err) {
     console.error('Error deleting car:', err.message);
     return res.status(500).json({ message: 'Server error while deleting car listing' });
-  }
-};
-
-// Update car availability
-exports.updateCarAvailability = async (req, res) => {
-  try {
-    const carId = req.params.id;
-    const { availability_start, availability_end } = req.body;
-    const userId = req.user.id;
-
-    // Input validation
-    if (!availability_start || !availability_end) {
-      return res.status(400).json({ message: 'Both start and end dates are required' });
-    }
-
-    // Validate date range
-    if (new Date(availability_end) < new Date(availability_start)) {
-      return res.status(400).json({ message: 'End date must be after start date' });
-    }
-
-    // Check if car exists and belongs to the user
-    const carCheck = await db.query(
-      'SELECT * FROM cars WHERE id = $1',
-      [carId]
-    );
-
-    if (carCheck.rows.length === 0) {
-      return res.status(404).json({ message: 'Car not found' });
-    }
-
-    const car = carCheck.rows[0];
-
-    // Verify ownership
-    if (car.user_id !== userId) {
-      return res.status(403).json({ message: 'Not authorized to update this car' });
-    }
-
-    // Check for active bookings that would be affected by this date change
-    const bookingConflictCheck = await db.query(
-      `SELECT COUNT(*) as conflict_count
-       FROM bookings
-       WHERE car_id = $1
-       AND status = 'accepted'
-       AND (
-         (start_date < $2) OR
-         (end_date > $3)
-       )`,
-      [carId, availability_start, availability_end]
-    );
-
-    if (bookingConflictCheck.rows[0].conflict_count > 0) {
-      return res.status(409).json({
-        message: 'Cannot update availability: there are active bookings outside of the new date range'
-      });
-    }
-
-    // Update the car's availability
-    const updateResult = await db.query(
-      `UPDATE cars
-       SET availability_start = $1, 
-           availability_end = $2,
-           updated_at = NOW()
-       WHERE id = $3
-       RETURNING *`,
-      [availability_start, availability_end, carId]
-    );
-
-    const updatedCar = updateResult.rows[0];
-    
-    // Format image URL if present
-    if (updatedCar.image) {
-      updatedCar.image_url = formatImageUrl(updatedCar.image);
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: 'Car availability updated successfully',
-      car: updatedCar
-    });
-  } catch (err) {
-    console.error('Error updating car availability:', err.message);
-    return res.status(500).json({ message: 'Server error while updating car availability' });
-  }
-};
-
-// Check if a car has active bookings
-exports.checkActiveBookings = async (req, res) => {
-  try {
-    const carId = req.params.id;
-    const userId = req.user.id;
-
-    // Check if car exists and belongs to the user
-    const carCheck = await db.query(
-      'SELECT * FROM cars WHERE id = $1',
-      [carId]
-    );
-
-    if (carCheck.rows.length === 0) {
-      return res.status(404).json({ message: 'Car not found' });
-    }
-
-    const car = carCheck.rows[0];
-
-    // Verify ownership
-    if (car.user_id !== userId) {
-      return res.status(403).json({ message: 'Not authorized to check this car' });
-    }
-
-    // Check for active bookings
-    const hasBookings = await hasActiveBookings(carId);
-
-    return res.status(200).json({
-      hasActiveBookings: hasBookings
-    });
-  } catch (err) {
-    console.error('Error checking active bookings:', err.message);
-    return res.status(500).json({ message: 'Server error while checking active bookings' });
   }
 };

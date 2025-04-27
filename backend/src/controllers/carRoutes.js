@@ -33,10 +33,13 @@ router.post(
 // GET - Get all cars (public endpoint)
 router.get('/', carController.getCars);
 
-// Check if car has active bookings - this must come BEFORE the /:id route
-router.get('/:id/active-bookings', authMiddleware.authenticate, authMiddleware.isHost, carController.checkActiveBookings);
+// GET - Get car by ID (public endpoint)
+router.get('/:id', carController.getCarById);
 
-// Update car availability - this must come BEFORE the /:id route
+// DELETE - Delete car by ID
+router.delete('/:id', authMiddleware.authenticate, authMiddleware.isHost, carController.deleteCar);
+
+// PATCH - Update car availability
 router.patch(
   '/:id/availability',
   authMiddleware.authenticate,
@@ -48,13 +51,10 @@ router.patch(
   carController.updateCarAvailability
 );
 
-// Get car availability - this must come BEFORE the /:id route
+// GET - Check if car has active bookings
+router.get('/:id/active-bookings', authMiddleware.authenticate, authMiddleware.isHost, carController.checkActiveBookings);
+
+// Get car availability
 router.get("/:id/availability", authMiddleware.authenticate, bookingController.getCarAvailability);
-
-// GET - Get car by ID (public endpoint)
-router.get('/:id', carController.getCarById);
-
-// DELETE - Delete car by ID
-router.delete('/:id', authMiddleware.authenticate, authMiddleware.isHost, carController.deleteCar);
 
 module.exports = router;

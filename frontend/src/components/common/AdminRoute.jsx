@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 
-const AdminRoute = ({ children }) => {
+const AdminRoute = ({ children, element }) => {
   const [auth, setAuth] = useState({
     isAuthenticated: false,
     isAdmin: false,
@@ -12,7 +12,6 @@ const AdminRoute = ({ children }) => {
     // Check if token exists in localStorage
     const token = localStorage.getItem('token');
     const userStr = localStorage.getItem('user');
-    
     if (token && userStr) {
       try {
         const user = JSON.parse(userStr);
@@ -49,7 +48,8 @@ const AdminRoute = ({ children }) => {
     return <Navigate to="/" />;
   }
 
-  return children;
+  // Support both patterns: children prop and element prop
+  return element || children;
 };
 
 export default AdminRoute;

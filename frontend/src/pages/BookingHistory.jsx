@@ -26,12 +26,12 @@ const BookingHistory = () => {
       const response = await getUserBookings();
       if (response.success) {
         setBookings(response.data);
-        
+
         // Check rating eligibility for completed bookings
-        const completedBookings = response.data.filter(booking => 
+        const completedBookings = response.data.filter(booking =>
           booking.status === 'completed'
         );
-        
+
         for (const booking of completedBookings) {
           await checkEligibility(booking.id);
         }
@@ -67,7 +67,7 @@ const BookingHistory = () => {
         setBookings(bookings.map(booking =>
           booking.id === bookingId ? { ...booking, status } : booking
         ));
-        
+
         // If booking is completed, check rating eligibility
         if (status === 'completed') {
           await checkEligibility(bookingId);
@@ -96,7 +96,7 @@ const BookingHistory = () => {
         }
       }));
     }
-    
+
     setRatingBooking(null);
   };
 
@@ -124,10 +124,9 @@ const BookingHistory = () => {
   // Filter bookings based on the active tab
   const currentDate = new Date();
 
-  // Current bookings - accepted bookings with end_date >= today
+  // Current bookings - accepted bookings (only move to past if status is completed or end_date has passed)
   const currentBookings = bookings.filter(booking =>
-    booking.status === 'accepted' &&
-    new Date(booking.end_date) >= currentDate
+    booking.status === 'accepted'
   );
 
   // Pending bookings - bookings with status 'pending'
@@ -135,10 +134,9 @@ const BookingHistory = () => {
     booking.status === 'pending'
   );
 
-  // Past bookings - completed bookings or accepted bookings with end_date < today
+  // Past bookings - completed bookings, rejected, or canceled
   const pastBookings = bookings.filter(booking =>
     booking.status === 'completed' ||
-    (booking.status === 'accepted' && new Date(booking.end_date) < currentDate) ||
     booking.status === 'rejected' ||
     booking.status === 'canceled'
   );
@@ -170,7 +168,7 @@ const BookingHistory = () => {
     return (
       <div className="container mx-auto p-6">
         <h1 className="text-3xl font-bold mb-6">Rate Your Experience</h1>
-        <RatingForm 
+        <RatingForm
           booking={ratingBooking}
           isRenter={isRenter}
           onSuccess={handleRatingComplete}
@@ -183,7 +181,7 @@ const BookingHistory = () => {
   return (
     <div className="container mx-auto p-6">
       <h1 className="text-3xl font-bold mb-6">
-        {isRenter ? 'Your Bookings' : 'Booking Requests'}
+        {isRenter ? 'Booking Requests' : 'Booking Requests'}
       </h1>
 
       {error && (
@@ -356,8 +354,8 @@ const BookingHistory = () => {
                     </button>
                   )}
 
-                  {/* Trip completed button for host when trip is current */}
-                  {!isRenter && booking.status === 'accepted' && new Date(booking.end_date) <= currentDate && (
+                  {/* Trip completed button ONLY for host when trip end date has passed */}
+                  {!isRenter && booking.status === 'accepted' && new Date(booking.end_date) < currentDate && (
                     <button
                       onClick={() => handleStatusUpdate(booking.id, 'completed')}
                       className="bg-blue-600 text-white py-1 px-3 rounded-full text-sm font-medium hover:bg-blue-700 transition"
@@ -375,7 +373,7 @@ const BookingHistory = () => {
                       Message
                     </Link>
                   )}
-                  
+
                   {/* Rating button for completed bookings if eligible */}
                   {booking.status === 'completed' && ratingEligibility[booking.id]?.eligible && (
                     <button
@@ -385,7 +383,7 @@ const BookingHistory = () => {
                       Leave Rating
                     </button>
                   )}
-                  
+
                   {/* Show if already rated */}
                   {booking.status === 'completed' && ratingEligibility[booking.id]?.hasRated && (
                     <span className="inline-flex items-center bg-green-100 text-green-800 py-1 px-3 rounded-full text-sm font-medium">

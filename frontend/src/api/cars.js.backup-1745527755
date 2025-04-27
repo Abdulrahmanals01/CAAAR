@@ -51,19 +51,19 @@ export const createCar = async (carData) => {
   try {
     const token = localStorage.getItem('token');
     if (!token) {
-      return {
-        success: false,
-        error: 'Authentication required'
+      return { 
+        success: false, 
+        error: 'Authentication required' 
       };
     }
-
+    
     const config = {
       headers: {
         'Content-Type': 'multipart/form-data',
         'Authorization': `Bearer ${token}`
       }
     };
-
+    
     const response = await axios.post(`${API_URL}/api/cars`, carData, config);
     return { success: true, data: response.data };
   } catch (error) {
@@ -80,19 +80,19 @@ export const updateCar = async (carId, carData) => {
   try {
     const token = localStorage.getItem('token');
     if (!token) {
-      return {
-        success: false,
-        error: 'Authentication required'
+      return { 
+        success: false, 
+        error: 'Authentication required' 
       };
     }
-
+    
     const config = {
       headers: {
         'Content-Type': 'multipart/form-data',
         'Authorization': `Bearer ${token}`
       }
     };
-
+    
     const response = await axios.put(`${API_URL}/api/cars/${carId}`, carData, config);
     return { success: true, data: response.data };
   } catch (error) {
@@ -103,83 +103,23 @@ export const updateCar = async (carId, carData) => {
   }
 };
 
-// Update car availability only
-export const updateCarAvailability = async (carId, availabilityData) => {
-  try {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      return {
-        success: false,
-        error: 'Authentication required'
-      };
-    }
-
-    const config = {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      }
-    };
-
-    const response = await axios.patch(
-      `${API_URL}/api/cars/${carId}/availability`, 
-      availabilityData, 
-      config
-    );
-    
-    return { success: true, data: response.data };
-  } catch (error) {
-    return {
-      success: false,
-      error: error.response?.data?.message || 'Error updating car availability'
-    };
-  }
-};
-
-// Check if car has active bookings
-export const checkActiveBookings = async (carId) => {
-  try {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      return {
-        success: false,
-        error: 'Authentication required'
-      };
-    }
-
-    const config = {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    };
-
-    const response = await axios.get(`${API_URL}/api/cars/${carId}/active-bookings`, config);
-    return { success: true, data: response.data };
-  } catch (error) {
-    return {
-      success: false,
-      error: error.response?.data?.message || 'Error checking active bookings'
-    };
-  }
-};
-
 // Delete car listing
 export const deleteCar = async (carId) => {
   try {
     const token = localStorage.getItem('token');
     if (!token) {
-      return {
-        success: false,
-        error: 'Authentication required'
+      return { 
+        success: false, 
+        error: 'Authentication required' 
       };
     }
-
+    
     const config = {
       headers: {
         'Authorization': `Bearer ${token}`
       }
     };
-
+    
     await axios.delete(`${API_URL}/api/cars/${carId}`, config);
     return { success: true };
   } catch (error) {
@@ -195,18 +135,18 @@ export const getHostCars = async () => {
   try {
     const token = localStorage.getItem('token');
     if (!token) {
-      return {
-        success: false,
-        error: 'Authentication required'
+      return { 
+        success: false, 
+        error: 'Authentication required' 
       };
     }
-
+    
     const config = {
       headers: {
         'Authorization': `Bearer ${token}`
       }
     };
-
+    
     const response = await axios.get(`${API_URL}/api/cars/owner`, config);
     return { success: true, data: response.data };
   } catch (error) {

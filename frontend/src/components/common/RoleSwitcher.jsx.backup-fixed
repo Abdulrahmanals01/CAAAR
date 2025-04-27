@@ -10,31 +10,16 @@ const RoleSwitcher = () => {
 
   const handleSwitchRole = async () => {
     if (isLoading) return;
-
+    
     setIsLoading(true);
     const newRole = user?.role === 'host' ? 'renter' : 'host';
-
+    
     try {
       const response = await axios.post('/api/roles/switch', { role: newRole });
-
+      
       if (response.data.success) {
-        // Update token in localStorage
-        const { token, user: updatedUser } = response.data;
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(updatedUser));
-        
-        // Update axios default headers
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        
-        // Update user in context
-        updateUser(updatedUser);
-        
-        // Navigate to dashboard based on role
-        if (newRole === 'host') {
-          navigate('/dashboard/host');
-        } else {
-          navigate('/dashboard/renter');
-        }
+        updateUser({ ...user, role: newRole });
+        navigate('/');  // Changed from /dashboard to /
       }
     } catch (error) {
       console.error('Error switching role:', error);

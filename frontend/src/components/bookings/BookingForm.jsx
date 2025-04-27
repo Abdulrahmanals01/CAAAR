@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createBooking } from '../../api/bookings';
+import useAuth from '../../hooks/useAuth';
 
-const BookingForm = ({ car, isHost }) => {
+const BookingForm = ({ car }) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     start_date: '',
     end_date: '',
@@ -12,17 +14,16 @@ const BookingForm = ({ car, isHost }) => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [totalPrice, setTotalPrice] = useState(0);
-  
-  // Get user ID from localStorage to check if user is car owner
-  const userId = parseInt(localStorage.getItem("userId")) || 0;
-  const isOwnCar = car && car.user_id === userId;
+
+  // Check if user is the car owner
+  const isOwnCar = car && car.user_id === user?.id;
 
   // Set initial dates to car's availability period
   useEffect(() => {
     if (car) {
       const today = new Date().toISOString().split('T')[0];
       const availabilityStart = car.availability_start;
-      
+
       // Choose the later date between today and availability_start
       const startDate = today > availabilityStart ? today : availabilityStart;
 
@@ -55,7 +56,7 @@ const BookingForm = ({ car, isHost }) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    
+
     // Prevent booking own car
     if (isOwnCar) {
       setError('You cannot book your own car');
@@ -86,8 +87,8 @@ const BookingForm = ({ car, isHost }) => {
     }
   };
 
-  // Don't show booking form for hosts, car owners, or if the car details aren't loaded
-  if (isHost || isOwnCar || !car) {
+  // Don't show booking form for hosts, car owners, admin users, or if the car details aren't loaded
+  if (user?.role === 'host' || user?.role === 'admin' || isOwnCar || !car) {
     return null;
   }
 

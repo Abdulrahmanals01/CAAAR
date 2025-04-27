@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { updateBookingStatus } from '../api/bookings';
+import useAuth from '../hooks/useAuth';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -10,8 +11,9 @@ const BookingRequests = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [actionError, setActionError] = useState(null);
-  const [refreshKey, setRefreshKey] = useState(0); // Add a refresh key state
-  const [processingBookingId, setProcessingBookingId] = useState(null); // Track which booking is being processed
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [processingBookingId, setProcessingBookingId] = useState(null);
+  const { user } = useAuth();
 
   const fetchBookings = async () => {
     try {
@@ -24,14 +26,24 @@ const BookingRequests = () => {
         return;
       }
 
+      // Check if user is host
+      if (user?.role !== 'host') {
+        setError('Only hosts can view booking requests.');
+        setLoading(false);
+        return;
+      }
+
       const response = await axios.get(`${API_URL}/api/bookings/user`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
       });
 
-      console.log('Fetched bookings:', response.data);
-      setBookings(response.data);
+      // Only show bookings where the user is the host (car owner)
+      const hostBookings = response.data.filter(booking => booking.host_id === user.id);
+      
+      console.log('Host bookings:', hostBookings);
+      setBookings(hostBookings);
       setError(null);
     } catch (err) {
       console.error('Error fetching bookings:', err);
@@ -42,27 +54,27 @@ const BookingRequests = () => {
   };
 
   useEffect(() => {
-    fetchBookings();
-  }, [refreshKey]); // Re-fetch when refreshKey changes
+    if (user) {
+      fetchBookings();
+    }
+  }, [refreshKey, user]);
 
   const handleAcceptBooking = async (bookingId) => {
     setActionError(null);
-    setProcessingBookingId(bookingId); // Set the processing booking ID
-    
+    setProcessingBookingId(bookingId);
+
     try {
       const result = await updateBookingStatus(bookingId, 'accepted');
 
       if (result.success) {
-        // Add a small delay before refreshing to give the backend time to process
         setTimeout(() => {
-          setRefreshKey(prevKey => prevKey + 1); // Force a refresh
+          setRefreshKey(prevKey => prevKey + 1);
         }, 1000);
       } else {
         setActionError(result.error || 'Error accepting booking. Please try again.');
-        // If there was a conflict error, refresh to show updated statuses
         if (result.error && result.error.includes('already been booked')) {
           setTimeout(() => {
-            setRefreshKey(prevKey => prevKey + 1); // Force a refresh
+            setRefreshKey(prevKey => prevKey + 1);
           }, 1000);
         }
       }
@@ -70,28 +82,26 @@ const BookingRequests = () => {
       console.error('Error accepting booking:', err);
       setActionError('Failed to accept booking. Please try again.');
     } finally {
-      setProcessingBookingId(null); // Clear the processing booking ID
+      setProcessingBookingId(null);
     }
   };
 
   const handleRejectBooking = async (bookingId) => {
     setActionError(null);
-    setProcessingBookingId(bookingId); // Set the processing booking ID
+    setProcessingBookingId(bookingId);
 
     try {
       const result = await updateBookingStatus(bookingId, 'rejected');
 
       if (result.success) {
-        // Add a small delay before refreshing
         setTimeout(() => {
-          setRefreshKey(prevKey => prevKey + 1); // Force a refresh
+          setRefreshKey(prevKey => prevKey + 1);
         }, 1000);
       } else {
         setActionError(result.error || 'Error rejecting booking. Please try again.');
-        // If there was a conflict error, refresh to show updated statuses
         if (result.error && result.error.includes('already been booked')) {
           setTimeout(() => {
-            setRefreshKey(prevKey => prevKey + 1); // Force a refresh
+            setRefreshKey(prevKey => prevKey + 1);
           }, 1000);
         }
       }
@@ -99,26 +109,33 @@ const BookingRequests = () => {
       console.error('Error rejecting booking:', err);
       setActionError('Failed to reject booking. Please try again.');
     } finally {
-      setProcessingBookingId(null); // Clear the processing booking ID
+      setProcessingBookingId(null);
     }
   };
 
-  // Add refresh function for manual refreshing
   const handleRefresh = () => {
     setRefreshKey(prevKey => prevKey + 1);
   };
 
-  // Filter bookings based on active tab
   const pendingBookings = bookings.filter(booking => booking.status === 'pending');
   const currentBookings = bookings.filter(booking => booking.status === 'accepted');
   const pastBookings = bookings.filter(booking =>
     ['rejected', 'canceled', 'completed'].includes(booking.status)
   );
 
-  // Determine which bookings to display based on the active tab
   const displayedBookings =
     activeTab === 'pending' ? pendingBookings :
     activeTab === 'current' ? currentBookings : pastBookings;
+
+  if (!user || user.role !== 'host') {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4">
+          Only hosts can view booking requests. Please switch to host mode to access this page.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -227,7 +244,7 @@ const BookingRequests = () => {
                     </div>
                     <div>
                       <h3 className="text-sm font-medium text-gray-500">Total Price</h3>
-                      <p className="font-semibold">${booking.total_price} SAR</p>
+                      <p className="font-semibold">${booking.total_price}</p>
                     </div>
                   </div>
 

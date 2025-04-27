@@ -9,7 +9,7 @@ import { IoArrowBack } from 'react-icons/io5';
 
 const Conversation = () => {
   const { userId } = useParams();
-  const { currentUser } = useContext(AuthContext);
+  const { user: currentUser, loading: authLoading } = useContext(AuthContext);
   const { socket, markMessagesAsRead } = useContext(ChatContext);
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -22,6 +22,8 @@ const Conversation = () => {
   // Initial load of conversation
   useEffect(() => {
     const fetchConversation = async () => {
+      if (!currentUser || !currentUser.id) return;
+      
       try {
         setLoading(true);
         const response = await getConversation(userId);
@@ -38,7 +40,7 @@ const Conversation = () => {
               id: userId,
               name: isOtherUserSender ? msg.sender_name : msg.receiver_name
             });
-            
+
             // Set the last message ID for incremental updates
             if (response.data.length > 0) {
               const ids = response.data.map(m => m.id).filter(id => id);
@@ -59,34 +61,34 @@ const Conversation = () => {
       }
     };
 
-    if (userId) {
+    if (userId && currentUser && currentUser.id) {
       fetchConversation();
     }
-  }, [userId]);
+  }, [userId, currentUser]);
 
   // Fetch only new messages periodically
   useEffect(() => {
-    if (!userId || loading) return;
+    if (!userId || loading || !currentUser || !currentUser.id) return;
 
     const fetchNewMessages = async () => {
       try {
         // In a real implementation, you would have an API endpoint that accepts a 'since' parameter
         // For now, we'll use the existing endpoint and filter client-side
         const response = await getConversation(userId);
-        
+
         if (response.success) {
           const existingIds = new Set(messages.map(m => m.id));
           const newMsgs = response.data.filter(m => !existingIds.has(m.id) && m.id > lastMessageId);
-          
+
           if (newMsgs.length > 0) {
             setMessages(prev => [...prev, ...newMsgs]);
-            
+
             // Update last message ID
             const ids = newMsgs.map(m => m.id).filter(id => id);
             if (ids.length > 0) {
               setLastMessageId(Math.max(...ids, lastMessageId));
             }
-            
+
             // Mark new messages as read
             markMessagesAsRead(userId);
           }
@@ -99,16 +101,16 @@ const Conversation = () => {
 
     const intervalId = setInterval(fetchNewMessages, 5000);
     return () => clearInterval(intervalId);
-  }, [userId, messages, lastMessageId, loading]);
+  }, [userId, messages, lastMessageId, loading, currentUser]);
 
   // Listen for new messages from socket
   useEffect(() => {
-    if (socket) {
+    if (socket && currentUser && currentUser.id) {
       const handleNewMessage = (message) => {
         // Add message if it's from this conversation
         if ((message.sender_id.toString() === userId && message.receiver_id === currentUser.id) ||
             (message.sender_id === currentUser.id && message.receiver_id.toString() === userId)) {
-          
+
           // Check if message is already in our state to avoid duplicates
           setMessages(prev => {
             if (!prev.some(m => m.id === message.id)) {
@@ -141,7 +143,7 @@ const Conversation = () => {
 
   // Send message
   const handleSendMessage = async (messageText) => {
-    if (!messageText.trim()) return;
+    if (!messageText.trim() || !currentUser || !currentUser.id) return;
 
     try {
       // Optimistically add the message to the UI
@@ -155,9 +157,9 @@ const Conversation = () => {
         sender_name: currentUser.name || 'You',
         read: false
       };
-      
+
       setMessages(prev => [...prev, newMessage]);
-      
+
       // Send via API
       const response = await apiSendMessage({
         receiver_id: parseInt(userId),
@@ -172,10 +174,10 @@ const Conversation = () => {
         // Replace temp message with real one if needed
         const realMessage = response.data;
         if (realMessage && realMessage.id) {
-          setMessages(prev => 
+          setMessages(prev =>
             prev.map(m => m.id === tempId ? {...realMessage, sender_name: currentUser.name || 'You'} : m)
           );
-          
+
           // Update last message ID
           if (realMessage.id > lastMessageId) {
             setLastMessageId(realMessage.id);
@@ -192,8 +194,12 @@ const Conversation = () => {
     navigate('/messages');
   };
 
-  if (loading) {
+  if (authLoading || loading) {
     return <div className="text-center p-4">Loading conversation...</div>;
+  }
+
+  if (!currentUser) {
+    return <div className="text-center p-4">Please log in to view messages.</div>;
   }
 
   return (

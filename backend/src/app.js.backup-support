@@ -42,8 +42,6 @@ app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/messages', require('./routes/messageRoutes')); // Add message routes
 app.use('/api/ratings', require('./routes/ratingRoutes'));
 app.use('/api/profiles', require('./routes/profileRoutes'));
-app.use('/api/support', require('./routes/supportRoutes')); // Add support routes
-app.use("/api/admin", require("./routes/adminRoutes"));
 app.use('/api/ratings', require('./routes/ratingRoutes'));
 app.use('/api/profiles', require('./routes/profileRoutes'));
 
@@ -150,6 +148,4 @@ server.listen(PORT, () => {
 });
 
 // Export the app
-const startScheduler = require("./scheduleTasks");
-startScheduler();
 module.exports = app;

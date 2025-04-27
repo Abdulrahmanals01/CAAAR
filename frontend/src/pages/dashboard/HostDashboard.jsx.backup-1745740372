@@ -4,17 +4,11 @@ import axios from 'axios';
 import useAuth from '../../hooks/useAuth';
 
 const HostDashboard = () => {
-  const [activeTab, setActiveTab] = useState('pending');
+  const [activeTab, setActiveTab] = useState('current');
   const [currentListings, setCurrentListings] = useState([]);
   const [bookingRequests, setBookingRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [statistics, setStatistics] = useState({
-    totalEarnings: 0,
-    totalBookings: 0,
-    activeCars: 0,
-    averageRating: 0
-  });
   const { user } = useAuth();
 
   useEffect(() => {
@@ -39,24 +33,18 @@ const HostDashboard = () => {
         }
       };
 
-      // Get host's cars
-      const carsResponse = await axios.get('http://localhost:5000/api/cars/owner', config);
-      setCurrentListings(carsResponse.data);
+      // Get all cars
+      const carsResponse = await axios.get('http://localhost:5000/api/cars', config);
+      const userCars = carsResponse.data.filter(car => car.user_id === user.id);
+      setCurrentListings(userCars);
 
-      // Get all bookings - the backend should already filter for host's cars
+      // Get bookings - backend already filters for host bookings
       const bookingsResponse = await axios.get('http://localhost:5000/api/bookings/user', config);
-      console.log('Raw bookings response:', bookingsResponse.data);
+      console.log('Received bookings:', bookingsResponse.data);
       
-      // For hosts, filter bookings to show only those for their cars
-      const hostBookings = bookingsResponse.data.filter(booking => 
-        booking.host_id === user.id || booking.car_user_id === user.id
-      );
-      
-      console.log('Filtered host bookings:', hostBookings);
-      setBookingRequests(hostBookings);
-
-      // Calculate statistics
-      calculateStatistics(carsResponse.data, hostBookings);
+      // For hosts, backend returns all bookings where their car is involved
+      // No need to filter further since backend handles it
+      setBookingRequests(bookingsResponse.data);
 
       setLoading(false);
     } catch (err) {
@@ -66,18 +54,11 @@ const HostDashboard = () => {
     }
   };
 
-  const calculateStatistics = (cars, bookings) => {
-    const completedBookings = bookings.filter(b => b.status === 'completed');
-    const totalEarnings = completedBookings.reduce((sum, booking) => sum + Number(booking.total_price), 0);
-    
-    setStatistics({
-      totalEarnings,
-      totalBookings: bookings.length,
-      activeCars: cars.length,
-      averageRating: 4.5 // Placeholder - should calculate from actual ratings
-    });
-  };
+  // Rest of the component remains the same...
 
+  // Make sure you update the rest of the component to be consistent with these changes
+  // The host dashboard should show bookings where the car belongs to the host
+  
   // Filter bookings by status
   const pendingRequests = bookingRequests.filter(booking => booking.status === 'pending');
   const currentTrips = bookingRequests.filter(booking => booking.status === 'accepted');
@@ -118,53 +99,11 @@ const HostDashboard = () => {
     }
   };
 
-  const handleAcceptBooking = async (bookingId) => {
-    try {
-      const token = localStorage.getItem('token');
-      await axios.put(`http://localhost:5000/api/bookings/${bookingId}/status`, 
-        { status: 'accepted' },
-        { headers: { 'Authorization': `Bearer ${token}` } }
-      );
-      fetchHostData(); // Refresh data
-    } catch (err) {
-      console.error('Error accepting booking:', err);
-      alert('Failed to accept booking: ' + (err.response?.data?.message || err.message));
-    }
-  };
-
-  const handleRejectBooking = async (bookingId) => {
-    try {
-      const token = localStorage.getItem('token');
-      await axios.put(`http://localhost:5000/api/bookings/${bookingId}/status`, 
-        { status: 'rejected' },
-        { headers: { 'Authorization': `Bearer ${token}` } }
-      );
-      fetchHostData(); // Refresh data
-    } catch (err) {
-      console.error('Error rejecting booking:', err);
-      alert('Failed to reject booking: ' + (err.response?.data?.message || err.message));
-    }
-  };
-
-  const handleCompleteBooking = async (bookingId) => {
-    try {
-      const token = localStorage.getItem('token');
-      await axios.put(`http://localhost:5000/api/bookings/${bookingId}/status`, 
-        { status: 'completed' },
-        { headers: { 'Authorization': `Bearer ${token}` } }
-      );
-      fetchHostData(); // Refresh data
-    } catch (err) {
-      console.error('Error completing booking:', err);
-      alert('Failed to complete booking: ' + (err.response?.data?.message || err.message));
-    }
-  };
-
   if (loading) return <div className="text-center p-10">Loading...</div>;
 
   return (
     <div className="container mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-8">Host Dashboard</h1>
+      <h1 className="text-3xl font-bold mb-8">Booking Requests</h1>
 
       {error && (
         <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert">
@@ -172,63 +111,9 @@ const HostDashboard = () => {
         </div>
       )}
 
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-gray-500 text-sm">Total Earnings</h3>
-          <p className="text-2xl font-bold">${statistics.totalEarnings}</p>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-gray-500 text-sm">Total Bookings</h3>
-          <p className="text-2xl font-bold">{statistics.totalBookings}</p>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-gray-500 text-sm">Active Cars</h3>
-          <p className="text-2xl font-bold">{statistics.activeCars}</p>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-gray-500 text-sm">Average Rating</h3>
-          <p className="text-2xl font-bold">{statistics.averageRating} ★</p>
-        </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="flex gap-4 mb-8">
-        <Link
-          to="/list-car"
-          className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 inline-flex items-center"
-        >
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
-          List New Car
-        </Link>
-        <Link
-          to="/manage-cars"
-          className="bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 inline-flex items-center"
-        >
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-          </svg>
-          Manage Cars
-        </Link>
-      </div>
-
-      <h2 className="text-2xl font-bold mb-6">Booking Requests</h2>
-
       {/* Tabs */}
       <div className="border-b border-gray-200 mb-6">
         <nav className="flex -mb-px">
-          <button
-            onClick={() => setActiveTab('pending')}
-            className={`mr-8 py-4 px-1 ${
-              activeTab === 'pending'
-                ? 'border-b-2 border-blue-500 text-blue-600'
-                : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
-          >
-            Pending <span className="ml-2 bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">{counts.pending}</span>
-          </button>
           <button
             onClick={() => setActiveTab('current')}
             className={`mr-8 py-4 px-1 ${
@@ -238,6 +123,16 @@ const HostDashboard = () => {
             }`}
           >
             Current Trips <span className="ml-2 bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">{counts.current}</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('pending')}
+            className={`mr-8 py-4 px-1 ${
+              activeTab === 'pending'
+                ? 'border-b-2 border-blue-500 text-blue-600'
+                : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Pending <span className="ml-2 bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">{counts.pending}</span>
           </button>
           <button
             onClick={() => setActiveTab('past')}
@@ -269,7 +164,7 @@ const HostDashboard = () => {
                   {booking.image ? (
                     <img
                       className="h-48 w-full object-cover md:w-48"
-                      src={booking.image.startsWith('http') ? booking.image : `http://localhost:5000/${booking.image}`}
+                      src={booking.image}
                       alt={`${booking.brand} ${booking.model}`}
                     />
                   ) : (
@@ -304,49 +199,23 @@ const HostDashboard = () => {
                       <h3 className="text-sm font-medium text-gray-500">Renter</h3>
                       <p className="text-blue-600">{booking.renter_name}</p>
                     </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-gray-500">Booking ID</h3>
-                      <p className="text-gray-600">#{booking.id}</p>
-                    </div>
                   </div>
 
-                  <div className="mt-6 flex gap-3">
-                    {booking.status === 'pending' && (
-                      <>
-                        <button
-                          onClick={() => handleAcceptBooking(booking.id)}
-                          className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
-                        >
-                          Accept
-                        </button>
-                        <button
-                          onClick={() => handleRejectBooking(booking.id)}
-                          className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
-                        >
-                          Reject
-                        </button>
-                      </>
-                    )}
-                    {booking.status === 'accepted' && (
-                      <button
-                        onClick={() => handleCompleteBooking(booking.id)}
-                        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                      >
-                        Mark as Completed
-                      </button>
-                    )}
-                    <Link
-                      to={`/messages/${booking.renter_id}`}
-                      className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-                    >
-                      Message Renter
-                    </Link>
+                  <div className="mt-6">
                     <Link
                       to={`/cars/${booking.car_id}`}
-                      className="bg-blue-100 text-blue-700 px-4 py-2 rounded hover:bg-blue-200"
+                      className="inline-block bg-blue-100 text-blue-700 px-4 py-2 rounded hover:bg-blue-200"
                     >
                       View Car Details
                     </Link>
+                    {booking.status === 'pending' && (
+                      <Link
+                        to="/booking-requests"
+                        className="inline-block bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 ml-4"
+                      >
+                        Manage Request
+                      </Link>
+                    )}
                   </div>
                 </div>
               </div>
@@ -355,7 +224,7 @@ const HostDashboard = () => {
         </div>
       )}
 
-      {/* Car Listings Section */}
+      {/* Car Listings Section - remains the same */}
       <h2 className="text-2xl font-bold mb-6 mt-12">Your Car Listings</h2>
 
       {currentListings.length === 0 ? (
