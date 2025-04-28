@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import axios from '../utils/axiosConfig';
 import CarCard from '../components/cars/CarCard';
 
 const CarSearch = () => {
@@ -12,7 +12,7 @@ const CarSearch = () => {
     const fetchCars = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/cars`);
+        const response = await axios.get('/api/cars');
         setCars(response.data);
         setError(null);
       } catch (err) {
@@ -29,14 +29,14 @@ const CarSearch = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6">Available Cars</h1>
-      
+
       {/* Error Message */}
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
           <p>{error}</p>
         </div>
       )}
-      
+
       {/* Loading State */}
       {loading ? (
         <div className="flex justify-center items-center h-64">

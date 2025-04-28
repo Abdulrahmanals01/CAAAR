@@ -8,9 +8,6 @@ const socketIo = require('socket.io');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
-// Middleware imports
-const userStatusMiddleware = require('./middleware/userStatus');
-
 // Initialize express app
 const app = express();
 const server = http.createServer(app);
@@ -27,8 +24,19 @@ const { createCarRatingsTable } = require('./db-update');
 createCarRatingsTable();
 
 // Middleware
-app.use(helmet());
-app.use(cors());
+app.use(helmet({
+  contentSecurityPolicy: false, // Disable CSP for development
+  crossOriginResourcePolicy: false // Allow resources to be shared
+}));
+
+// Configure CORS for all routes
+app.use(cors({
+  origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(morgan('dev'));
@@ -36,11 +44,8 @@ app.use(morgan('dev'));
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// Routes that don't need status check
+// Define Routes
 app.use('/api/auth', require('./routes/authRoutes'));
-app.use("/api/admin", require("./routes/adminRoutes"));
-
-// Routes that need status check
 app.use('/api/cars', require('./routes/carRoutes'));
 app.use('/api/bookings', require('./routes/bookingRoutes'));
 app.use('/api/roles', require('./routes/roleRoutes'));
@@ -49,5 +54,105 @@ app.use('/api/messages', require('./routes/messageRoutes'));
 app.use('/api/ratings', require('./routes/ratingRoutes'));
 app.use('/api/profiles', require('./routes/profileRoutes'));
 app.use('/api/support', require('./routes/supportRoutes'));
+app.use("/api/admin", require("./routes/adminRoutes"));
 
-// ... [Rest of the app.js remains the same] ...
+// Socket.io authentication middleware
+io.use((socket, next) => {
+  const token = socket.handshake.auth.token;
+  if (!token) {
+    return next(new Error('Authentication error'));
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    socket.userId = decoded.user.id;
+    next();
+  } catch (err) {
+    next(new Error('Authentication error'));
+  }
+});
+
+// Map to track connected users
+const connectedUsers = new Map();
+
+// Socket.io connection handling
+io.on('connection', (socket) => {
+  const userId = socket.userId;
+
+  // Add user to connected users
+  connectedUsers.set(userId, socket.id);
+  console.log(`User connected: ${userId}`);
+
+  // Handle sending messages
+  socket.on('send_message', async (data) => {
+    try {
+      const { receiver_id, message, booking_id } = data;
+
+      // The message is saved to the database via the REST API
+      // Here we just handle the real-time notification
+
+      // Create message object for socket
+      const messageData = {
+        sender_id: userId,
+        receiver_id,
+        message,
+        booking_id,
+        created_at: new Date(),
+        read: false
+      };
+
+      // Send to receiver if online
+      const receiverSocketId = connectedUsers.get(receiver_id);
+      if (receiverSocketId) {
+        io.to(receiverSocketId).emit('receive_message', messageData);
+      }
+
+      // Also send to sender as confirmation
+      socket.emit('message_sent', messageData);
+
+    } catch (error) {
+      console.error('Socket message error:', error);
+      socket.emit('message_error', { error: 'Failed to process message' });
+    }
+  });
+
+  // Handle typing indicator
+  socket.on('typing', (data) => {
+    const { receiver_id, isTyping } = data;
+
+    // Send to receiver if online
+    const receiverSocketId = connectedUsers.get(receiver_id);
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit('typing', {
+        user_id: userId,
+        isTyping
+      });
+    }
+  });
+
+  // Handle disconnection
+  socket.on('disconnect', () => {
+    connectedUsers.delete(userId);
+    console.log(`User disconnected: ${userId}`);
+  });
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).send({ message: 'Something went wrong!' });
+});
+
+// Default route
+app.get('/', (req, res) => {
+  res.json({ message: 'Welcome to Sayarati API' });
+});
+
+// Start server
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
+
+// Export the app
+module.exports = app;

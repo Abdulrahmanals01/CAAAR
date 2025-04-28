@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
+import axios from '../utils/axiosConfig';
 import SearchBar from '../components/SearchBar';
 
 const Home = () => {
@@ -20,7 +20,7 @@ const Home = () => {
   const fetchCars = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:5000/api/cars');
+      const response = await axios.get('/api/cars');
       console.log('Fetched cars:', response.data);
       setCars(response.data || []);
       setLoading(false);
@@ -97,12 +97,12 @@ const Home = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {cars.slice(0, 6).map((car, index) => (
-                <div key={car.id || index} className="bg-white p-4 rounded shadow-md hover:shadow-lg transition-shadow">
+                <div key={car.id || index} className="bg-white p-4 rounded shadow-md hover:shadow-lg transition-shadow">     
                   {car.image_url ? (
-                    <img 
+                    <img
                       src={car.image_url}
                       alt={`${car.brand} ${car.model}`}
-                      className="w-full h-48 object-cover mb-4 rounded" 
+                      className="w-full h-48 object-cover mb-4 rounded"
                       onError={(e) => {
                         console.error("Image failed to load:", car.image_url);
                         e.target.src = "https://via.placeholder.com/400x300?text=Car+Image";
@@ -137,7 +137,7 @@ const Home = () => {
                 <span className="text-blue-600 text-2xl font-bold">1</span>
               </div>
               <h3 className="text-xl font-semibold mb-2">Search for a Car</h3>
-              <p className="text-gray-600">Find the perfect car for your needs and schedule in our diverse selection.</p>  
+              <p className="text-gray-600">Find the perfect car for your needs and schedule in our diverse selection.</p>    
             </div>
             <div className="text-center">
               <div className="bg-blue-100 w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center">
@@ -151,7 +151,7 @@ const Home = () => {
                 <span className="text-blue-600 text-2xl font-bold">3</span>
               </div>
               <h3 className="text-xl font-semibold mb-2">Hit the Road</h3>
-              <p className="text-gray-600">Pick up the car and enjoy your journey with full insurance coverage.</p>        
+              <p className="text-gray-600">Pick up the car and enjoy your journey with full insurance coverage.</p>
             </div>
           </div>
         </div>
