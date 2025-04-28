@@ -73,14 +73,11 @@ exports.getDeletedListings = async (req, res) => {
 // Get admin actions history
 exports.getAdminActions = async (req, res) => {
   try {
-    console.log('Fetching admin actions...');
     const actions = await db.query(`
       SELECT * FROM admin_actions
       ORDER BY performed_at DESC
     `);
-    
-    console.log('Admin actions found:', actions.rows.length);
-    
+
     res.json({
       success: true,
       actions: actions.rows
@@ -94,47 +91,17 @@ exports.getAdminActions = async (req, res) => {
   }
 };
 
-// Record admin action - FIXED
+// Record admin action
 async function recordAdminAction(adminId, adminName, actionType, targetType, targetId, targetName, reason, expiresAt = null) {
   try {
-    console.log('Recording admin action:', {
-      adminId, adminName, actionType, targetType, targetId, targetName, reason
-    });
-    
-    // Validate action type
-    if (!['freeze', 'unfreeze', 'ban', 'unban', 'delete_listing'].includes(actionType)) {
-      console.error('Invalid action_type:', actionType);
-      return null;
-    }
-    
-    // Validate target type
-    if (!['user', 'listing'].includes(targetType)) {
-      console.error('Invalid target_type:', targetType);
-      return null;
-    }
-    
-    // Make sure we have the required fields
-    if (!adminId || !targetId) {
-      console.error('Missing required fields:', { adminId, targetId });
-      return null;
-    }
-    
-    // Ensure adminName and targetName have values
-    const safeAdminName = adminName || 'Admin User';
-    const safeTargetName = targetName || 'Target';
-    
-    const result = await db.query(`
+    await db.query(`
       INSERT INTO admin_actions 
       (admin_id, admin_name, action_type, target_type, target_id, target_name, reason, expires_at)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING *
-    `, [adminId, safeAdminName, actionType, targetType, targetId, safeTargetName, reason, expiresAt]);
-    
-    console.log('Admin action recorded successfully:', result.rows[0]);
-    return result.rows[0];
+    `, [adminId, adminName, actionType, targetType, targetId, targetName, reason, expiresAt]);
+    console.log('Admin action recorded successfully');
   } catch (error) {
     console.error('Error recording admin action:', error);
-    return null;
   }
 }
 
@@ -144,9 +111,7 @@ exports.freezeUser = async (req, res) => {
     const { userId } = req.params;
     const { duration, reason } = req.body;
     const adminId = req.user.id;
-    const adminName = req.user.name || 'Admin User';
-    
-    console.log('Freezing user:', { userId, adminId, adminName, duration, reason });
+    const adminName = req.user.name;
 
     // Get user info before freezing
     const userInfo = await db.query('SELECT name FROM users WHERE id = $1', [userId]);
@@ -193,7 +158,7 @@ exports.freezeUser = async (req, res) => {
       freezeUntil
     );
 
-    // Cancel all active bookings
+    // Cancel all active bookings (using 'canceled' with one 'l')
     await db.query(`
       UPDATE bookings
       SET status = 'canceled',
@@ -226,7 +191,7 @@ exports.unfreezeUser = async (req, res) => {
   try {
     const { userId } = req.params;
     const adminId = req.user.id;
-    const adminName = req.user.name || 'Admin User';
+    const adminName = req.user.name;
 
     // Get user info before unfreezing
     const userInfo = await db.query('SELECT name FROM users WHERE id = $1', [userId]);
@@ -284,9 +249,7 @@ exports.banUser = async (req, res) => {
     const { userId } = req.params;
     const { reason } = req.body;
     const adminId = req.user.id;
-    const adminName = req.user.name || 'Admin User';
-
-    console.log('Ban user request:', { userId, adminId, adminName, reason });
+    const adminName = req.user.name;
 
     // Get user info before banning
     const userInfo = await db.query('SELECT name FROM users WHERE id = $1', [userId]);
@@ -327,7 +290,7 @@ exports.banUser = async (req, res) => {
       reason
     );
 
-    // Cancel all active bookings
+    // Cancel all active bookings (using 'canceled' with one 'l')
     await db.query(`
       UPDATE bookings
       SET status = 'canceled',
@@ -360,7 +323,7 @@ exports.unbanUser = async (req, res) => {
   try {
     const { userId } = req.params;
     const adminId = req.user.id;
-    const adminName = req.user.name || 'Admin User';
+    const adminName = req.user.name;
 
     // Get user info before unbanning
     const userInfo = await db.query('SELECT name FROM users WHERE id = $1', [userId]);
@@ -417,7 +380,7 @@ exports.deleteListing = async (req, res) => {
     const { listingId } = req.params;
     const { reason } = req.body;
     const adminId = req.user.id;
-    const adminName = req.user.name || 'Admin User';
+    const adminName = req.user.name;
 
     // Get listing details before deletion
     const listingDetails = await db.query(`

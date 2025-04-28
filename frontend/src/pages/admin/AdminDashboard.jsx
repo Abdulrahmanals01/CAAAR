@@ -5,6 +5,7 @@ const AdminDashboard = () => {
   const [users, setUsers] = useState([]);
   const [listings, setListings] = useState([]);
   const [deletedListings, setDeletedListings] = useState([]);
+  const [adminActions, setAdminActions] = useState([]);
   const [activeTab, setActiveTab] = useState('users');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -20,6 +21,8 @@ const AdminDashboard = () => {
       fetchListings();
     } else if (activeTab === 'deleted') {
       fetchDeletedListings();
+    } else if (activeTab === 'actions') {
+      fetchAdminActions();
     }
   }, [activeTab]);
 
@@ -54,6 +57,18 @@ const AdminDashboard = () => {
       setDeletedListings(response.data.deletedListings || []);
     } catch (err) {
       setError('Failed to fetch deleted listings');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchAdminActions = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get('/api/admin/actions');
+      setAdminActions(response.data.actions || []);
+    } catch (err) {
+      setError('Failed to fetch admin actions');
     } finally {
       setLoading(false);
     }
@@ -135,6 +150,34 @@ const AdminDashboard = () => {
     });
   };
 
+  // Helper function to get badge colors based on action type
+  const getActionBadgeClass = (actionType) => {
+    switch (actionType) {
+      case 'freeze':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'unfreeze':
+        return 'bg-green-100 text-green-800';
+      case 'ban':
+        return 'bg-red-100 text-red-800';
+      case 'unban':
+        return 'bg-green-100 text-green-800';
+      case 'delete_listing':
+        return 'bg-purple-100 text-purple-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  // Format action type for display
+  const formatActionType = (actionType) => {
+    switch (actionType) {
+      case 'delete_listing':
+        return 'Delete Listing';
+      default:
+        return actionType.charAt(0).toUpperCase() + actionType.slice(1);
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
@@ -171,6 +214,16 @@ const AdminDashboard = () => {
               }`}
             >
               Deleted Listings
+            </button>
+            <button
+              onClick={() => setActiveTab('actions')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'actions'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              Action History
             </button>
           </nav>
         </div>
@@ -354,6 +407,9 @@ const AdminDashboard = () => {
                       Owner
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Deleted By
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Deleted At
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -366,17 +422,77 @@ const AdminDashboard = () => {
                     deletedListings.map((listing) => (
                       <tr key={listing.id}>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {listing.brand} {listing.model}
+                          {listing.brand} {listing.model} ({listing.year})
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">{listing.owner_name}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{listing.admin_name}</td>
                         <td className="px-6 py-4 whitespace-nowrap">{formatDate(listing.deleted_at)}</td>
                         <td className="px-6 py-4 whitespace-nowrap">{listing.reason}</td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="4" className="px-6 py-4 text-center text-gray-500">
+                      <td colSpan="5" className="px-6 py-4 text-center text-gray-500">
                         No deleted listings found
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {activeTab === 'actions' && (
+            <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Admin
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Action
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Target
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Date & Time
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Reason
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Expires
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {adminActions && adminActions.length > 0 ? (
+                    adminActions.map((action) => (
+                      <tr key={action.id}>
+                        <td className="px-6 py-4 whitespace-nowrap">{action.admin_name}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getActionBadgeClass(action.action_type)}`}>
+                            {formatActionType(action.action_type)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div>
+                            <span className="capitalize">{action.target_type}:</span> {action.target_name}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">{formatDate(action.performed_at)}</td>
+                        <td className="px-6 py-4">{action.reason}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {action.expires_at ? formatDate(action.expires_at) : '-'}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
+                        No admin actions found
                       </td>
                     </tr>
                   )}

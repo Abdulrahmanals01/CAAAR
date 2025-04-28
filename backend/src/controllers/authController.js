@@ -75,8 +75,12 @@ exports.login = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    // Check if user exists
-    const result = await db.query('SELECT * FROM users WHERE email = $1', [email]);
+    // Check if user exists with status information
+    const result = await db.query(
+      'SELECT id, name, email, password, role, status, freeze_until, freeze_reason, ban_reason FROM users WHERE email = $1', 
+      [email]
+    );
+    
     if (result.rows.length === 0) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
@@ -87,6 +91,37 @@ exports.login = async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(400).json({ message: 'Invalid credentials' });
+    }
+
+    // Check if account is banned
+    if (user.status === 'banned') {
+      return res.status(403).json({
+        message: 'Your account has been banned',
+        status: 'banned',
+        reason: user.ban_reason || 'Violation of terms of service'
+      });
+    }
+
+    // Check if account is frozen
+    if (user.status === 'frozen') {
+      const freezeUntil = new Date(user.freeze_until);
+      const now = new Date();
+      
+      // If freeze period has expired, automatically unfreeze the user
+      if (freezeUntil < now) {
+        await db.query(
+          'UPDATE users SET status = $1, freeze_until = NULL, freeze_reason = NULL WHERE id = $2',
+          ['active', user.id]
+        );
+      } else {
+        // Return error with freeze information
+        return res.status(403).json({
+          message: 'Your account has been temporarily frozen',
+          status: 'frozen',
+          reason: user.freeze_reason || 'Violation of terms of service',
+          until: user.freeze_until
+        });
+      }
     }
 
     // Generate JWT token
@@ -124,7 +159,7 @@ exports.login = async (req, res) => {
 exports.getCurrentUser = async (req, res) => {
   try {
     const user = await db.query(
-      'SELECT id, name, email, role, phone, id_number, license_image, created_at FROM users WHERE id = $1',
+      'SELECT id, name, email, role, phone, id_number, license_image, created_at, status, freeze_until, freeze_reason, ban_reason FROM users WHERE id = $1',
       [req.user.id]
     );
 
@@ -143,7 +178,7 @@ exports.getCurrentUser = async (req, res) => {
 exports.switchRole = async (req, res) => {
   try {
     const userId = req.user.id;
-    
+
     // If newRole is not provided, toggle between host and renter
     let newRole;
     if (req.body.newRole) {
@@ -154,7 +189,7 @@ exports.switchRole = async (req, res) => {
       if (userResult.rows.length === 0) {
         return res.status(404).json({ message: 'User not found' });
       }
-      
+
       const currentRole = userResult.rows[0].role;
       newRole = currentRole === 'host' ? 'renter' : 'host';
     }

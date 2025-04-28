@@ -16,7 +16,6 @@ export const AuthProvider = ({ children }) => {
   const checkAuth = async () => {
     const token = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
-    
     if (token && userData) {
       try {
         const parsedUser = JSON.parse(userData);
@@ -34,7 +33,6 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await axios.post('/api/auth/login', { email, password });
       const { token, user } = response.data;
-      
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
@@ -50,6 +48,18 @@ export const AuthProvider = ({ children }) => {
       return { success: true };
     } catch (error) {
       console.error('Login error:', error);
+      
+      // Handle banned or frozen account errors
+      if (error.response && error.response.status === 403) {
+        return {
+          success: false,
+          error: error.response.data.message,
+          status: error.response.data.status,
+          reason: error.response.data.reason,
+          until: error.response.data.until
+        };
+      }
+      
       return {
         success: false,
         error: error.response?.data?.message || 'An error occurred during login'
@@ -61,13 +71,11 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await axios.post('/api/auth/register', userData);
       const { token, user } = response.data;
-      
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       setUser(user);
       navigate('/');
-      
       return { success: true };
     } catch (error) {
       console.error('Registration error:', error);
@@ -92,13 +100,6 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('user', JSON.stringify(updatedUser));
   };
 
-  const updateToken = (token, userData) => {
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(userData));
-    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    setUser(userData);
-  };
-
   const isAdmin = () => {
     return user?.role === 'admin';
   };
@@ -115,7 +116,6 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     updateUser,
-    updateToken,
     isAdmin,
     isHost
   };
