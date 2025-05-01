@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import axios from '../../utils/axiosConfig';
+import { setUserData } from '../../utils/auth';
 
 const RoleSwitcher = () => {
   const { user, updateUser } = useAuth();
@@ -10,26 +11,28 @@ const RoleSwitcher = () => {
 
   const handleSwitchRole = async () => {
     if (isLoading) return;
-
     setIsLoading(true);
     const newRole = user?.role === 'host' ? 'renter' : 'host';
-
+    
     try {
       const response = await axios.post('/api/roles/switch', { role: newRole });
-
+      
       if (response.data.success) {
         // Update token in localStorage
         const { token, user: updatedUser } = response.data;
         localStorage.setItem('token', token);
         localStorage.setItem('user', JSON.stringify(updatedUser));
-
+        
+        // Also update the separate userRole in localStorage
+        setUserData(updatedUser);
+        
         // Update axios default headers
         axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-
+        
         // Update user in context
         updateUser(updatedUser);
-
-        // Navigate to home page instead of dashboard
+        
+        // Navigate to home page
         navigate('/');
       }
     } catch (error) {

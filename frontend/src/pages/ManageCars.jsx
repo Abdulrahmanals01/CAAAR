@@ -18,7 +18,7 @@ const ManageCars = () => {
       try {
         setLoading(true);
         const response = await getHostCars();
-        
+
         if (response.success) {
           setCars(response.data);
         } else {
@@ -46,22 +46,22 @@ const ManageCars = () => {
     // First check if car has active bookings
     try {
       const activeBookingsCheck = await checkActiveBookings(carId);
-      
+
       if (!activeBookingsCheck.success) {
         setStatusMessage(activeBookingsCheck.error || 'Error checking active bookings.');
         setActionInProgress(false);
         return;
       }
-      
+
       if (activeBookingsCheck.data.hasActiveBookings) {
-        setStatusMessage('Cannot delete car with active bookings. You must wait until all current bookings are completed.');
+        setStatusMessage('Cannot delete car with active bookings. You must wait until all current bookings are completed.'); 
         setActionInProgress(false);
         return;
       }
-      
+
       // Proceed with deletion if no active bookings
       const response = await deleteCar(carId);
-      
+
       if (response.success) {
         setStatusMessage('Car deleted successfully!');
         // Remove the car from state
@@ -88,11 +88,11 @@ const ManageCars = () => {
 
   const handleAvailabilityUpdated = (updatedCar) => {
     // Update the car in the state
-    setCars(cars.map(car => 
+    setCars(cars.map(car =>
       car.id === updatedCar.id ? { ...car, ...updatedCar } : car
     ));
     setStatusMessage('Availability updated successfully!');
-    
+
     // Close the modal
     setIsEditModalOpen(false);
     setSelectedCar(null);
@@ -100,11 +100,8 @@ const ManageCars = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
+      <div className="mb-6">
         <h1 className="text-3xl font-bold">Manage Your Cars</h1>
-        <Link to="/list-car" className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
-          Add New Car
-        </Link>
       </div>
 
       {error && (
@@ -142,26 +139,26 @@ const ManageCars = () => {
                 <h2 className="text-xl font-semibold mb-2">{car.brand} {car.model}</h2>
                 <p className="text-gray-600 mb-2">{car.year} • {car.color}</p>
                 <p className="text-lg font-bold text-blue-600 mb-3">{car.price_per_day} SAR/day</p>
-                
+
                 <div className="mb-3 text-sm text-gray-600">
                   <div><strong>Available:</strong> {formatDateString(car.availability_start)} - {formatDateString(car.availability_end)}</div>
                   <div><strong>Location:</strong> {car.location}</div>
                 </div>
-                
+
                 <div className="flex flex-wrap justify-between gap-2">
                   <Link to={`/cars/${car.id}`} className="text-blue-500 hover:underline">
                     View Details
                   </Link>
-                  
-                  <button 
+
+                  <button
                     onClick={() => handleEditAvailability(car)}
                     className="text-green-600 hover:underline"
                     disabled={actionInProgress}
                   >
                     Edit Availability
                   </button>
-                  
-                  <button 
+
+                  <button
                     onClick={() => handleDeleteCar(car.id)}
                     className="text-red-500 hover:underline"
                     disabled={actionInProgress}
@@ -182,10 +179,10 @@ const ManageCars = () => {
           </Link>
         </div>
       )}
-      
+
       {/* Edit Availability Modal */}
       {selectedCar && (
-        <EditAvailabilityModal 
+        <EditAvailabilityModal
           car={selectedCar}
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}

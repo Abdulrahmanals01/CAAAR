@@ -9,7 +9,7 @@ const SearchBar = () => {
     startTime: '10:00',
     endTime: '10:00'
   });
-  
+
   const navigate = useNavigate();
 
   const handleInputChange = (e) => {
@@ -22,7 +22,7 @@ const SearchBar = () => {
 
   const handleSearch = (e) => {
     e.preventDefault();
-    
+
     // Create query string from search parameters
     const queryString = new URLSearchParams({
       location: searchParams.location,
@@ -31,14 +31,15 @@ const SearchBar = () => {
       startTime: searchParams.startTime,
       endTime: searchParams.endTime
     }).toString();
-    
+
     // Navigate to search results page with query parameters
     navigate(`/cars/search?${queryString}`);
   };
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-4 max-w-6xl mx-auto -mt-8 relative z-10">
-      <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4">
+      <form onSubmit={handleSearch} className="flex flex-col lg:flex-row gap-4">
+        {/* Location */}
         <div className="flex-grow">
           <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">Where</label>
           <input
@@ -52,9 +53,11 @@ const SearchBar = () => {
             required
           />
         </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:w-2/5">
-          <div>
+
+        {/* Date and time selectors */}
+        <div className="flex flex-wrap lg:flex-nowrap lg:w-3/5 gap-4">
+          {/* From date and time */}
+          <div className="w-full sm:w-1/2">
             <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1">From</label>
             <div className="flex">
               <input
@@ -80,8 +83,9 @@ const SearchBar = () => {
               </select>
             </div>
           </div>
-          
-          <div>
+
+          {/* Until date and time */}
+          <div className="w-full sm:w-1/2">
             <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-1">Until</label>
             <div className="flex">
               <input
@@ -109,11 +113,13 @@ const SearchBar = () => {
             </div>
           </div>
         </div>
-        
+
+        {/* Search button */}
         <div className="flex items-end">
-          <button 
-            type="submit" 
-            className="w-full md:w-auto p-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          <button
+            type="submit"
+            className="w-full lg:w-auto p-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            aria-label="Search"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />

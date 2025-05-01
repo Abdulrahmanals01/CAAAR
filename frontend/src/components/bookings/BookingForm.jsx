@@ -75,8 +75,17 @@ const BookingForm = ({ car }) => {
 
       if (response.success) {
         setSuccess(true);
+        // Save the current user role to ensure we don't lose it during redirection
+        const currentRole = user.role;
+        
         // Redirect to booking history after a short delay
-        setTimeout(() => navigate('/booking-history'), 2000);
+        setTimeout(() => {
+          // Before navigating, ensure the userRole in localStorage is still correct
+          if (localStorage.getItem('userRole') !== currentRole) {
+            localStorage.setItem('userRole', currentRole);
+          }
+          navigate('/booking-history');
+        }, 2000);
       } else {
         throw new Error(response.error);
       }

@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from '../utils/axiosConfig';
+import { setUserData, clearAuth } from '../utils/auth';
 
 export const AuthContext = createContext();
 
@@ -21,6 +22,9 @@ export const AuthProvider = ({ children }) => {
         const parsedUser = JSON.parse(userData);
         setUser(parsedUser);
         axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        
+        // Ensure userRole is also set in localStorage
+        setUserData(parsedUser);
       } catch (error) {
         console.error('Error parsing user data:', error);
         logout();
@@ -35,20 +39,24 @@ export const AuthProvider = ({ children }) => {
       const { token, user } = response.data;
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
+      
+      // Also set userRole in localStorage
+      setUserData(user);
+      
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       setUser(user);
-      
+
       // Redirect admin to admin dashboard, others to home page
       if (user.role === 'admin') {
         navigate('/admin/dashboard');
       } else {
         navigate('/');
       }
-      
+
       return { success: true };
     } catch (error) {
       console.error('Login error:', error);
-      
+
       // Handle banned or frozen account errors
       if (error.response && error.response.status === 403) {
         return {
@@ -59,7 +67,7 @@ export const AuthProvider = ({ children }) => {
           until: error.response.data.until
         };
       }
-      
+
       return {
         success: false,
         error: error.response?.data?.message || 'An error occurred during login'
@@ -73,6 +81,10 @@ export const AuthProvider = ({ children }) => {
       const { token, user } = response.data;
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
+      
+      // Also set userRole in localStorage
+      setUserData(user);
+      
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       setUser(user);
       navigate('/');
@@ -87,9 +99,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    delete axios.defaults.headers.common['Authorization'];
+    clearAuth(); // Use the clearAuth utility function
     setUser(null);
     navigate('/login');
   };
@@ -98,6 +108,9 @@ export const AuthProvider = ({ children }) => {
     const updatedUser = { ...user, ...userData };
     setUser(updatedUser);
     localStorage.setItem('user', JSON.stringify(updatedUser));
+    
+    // Also update userRole in localStorage
+    setUserData(updatedUser);
   };
 
   const isAdmin = () => {

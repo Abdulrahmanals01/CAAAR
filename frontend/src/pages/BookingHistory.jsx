@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getUserBookings, updateBookingStatus } from '../api/bookings';
 import { checkRatingEligibility } from '../api/ratings';
+import useAuth from '../hooks/useAuth';
 import RatingForm from '../components/ratings/RatingForm';
 import StarRating from '../components/common/StarRating';
 
@@ -13,7 +14,8 @@ const BookingHistory = () => {
   const [ratingBooking, setRatingBooking] = useState(null);
   const [ratingEligibility, setRatingEligibility] = useState({});
 
-  const userRole = localStorage.getItem('userRole');
+  const { user } = useAuth();
+  const userRole = localStorage.getItem('userRole') || user?.role;
   const isRenter = userRole === 'renter';
 
   useEffect(() => {
@@ -45,6 +47,7 @@ const BookingHistory = () => {
     }
   };
 
+  // Rest of the component remains the same
   const checkEligibility = async (bookingId) => {
     try {
       const response = await checkRatingEligibility(bookingId);

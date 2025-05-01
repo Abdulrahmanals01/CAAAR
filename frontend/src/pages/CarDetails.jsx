@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getCarById } from '../api/cars';
 import { getCarRatings } from '../api/ratings';
+import useAuth from '../hooks/useAuth';
 import BookingForm from '../components/bookings/BookingForm';
 import StarRating from '../components/common/StarRating';
 
@@ -14,9 +15,10 @@ const CarDetails = () => {
   const [isOwner, setIsOwner] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
 
-  const userRole = localStorage.getItem('userRole');
-  const userId = parseInt(localStorage.getItem('userId')) || 0;
+  const { user } = useAuth();
+  const userRole = localStorage.getItem('userRole') || user?.role;
   const isHost = userRole === 'host';
+  const userId = parseInt(localStorage.getItem('userId')) || user?.id || 0;
 
   useEffect(() => {
     const fetchCarDetails = async () => {
@@ -45,6 +47,7 @@ const CarDetails = () => {
     fetchCarDetails();
   }, [id, userId]);
 
+  // Rest of the component remains the same
   if (loading) {
     return (
       <div className="container mx-auto p-6 flex justify-center">
@@ -85,8 +88,8 @@ const CarDetails = () => {
             <button
               onClick={() => setActiveTab('overview')}
               className={`py-4 px-6 font-medium ${
-                activeTab === 'overview' 
-                  ? 'border-b-2 border-blue-500 text-blue-600' 
+                activeTab === 'overview'
+                  ? 'border-b-2 border-blue-500 text-blue-600'
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
@@ -95,8 +98,8 @@ const CarDetails = () => {
             <button
               onClick={() => setActiveTab('features')}
               className={`py-4 px-6 font-medium ${
-                activeTab === 'features' 
-                  ? 'border-b-2 border-blue-500 text-blue-600' 
+                activeTab === 'features'
+                  ? 'border-b-2 border-blue-500 text-blue-600'
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
@@ -105,8 +108,8 @@ const CarDetails = () => {
             <button
               onClick={() => setActiveTab('reviews')}
               className={`py-4 px-6 font-medium ${
-                activeTab === 'reviews' 
-                  ? 'border-b-2 border-blue-500 text-blue-600' 
+                activeTab === 'reviews'
+                  ? 'border-b-2 border-blue-500 text-blue-600'
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
@@ -115,8 +118,8 @@ const CarDetails = () => {
             <button
               onClick={() => setActiveTab('location')}
               className={`py-4 px-6 font-medium ${
-                activeTab === 'location' 
-                  ? 'border-b-2 border-blue-500 text-blue-600' 
+                activeTab === 'location'
+                  ? 'border-b-2 border-blue-500 text-blue-600'
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
@@ -167,7 +170,7 @@ const CarDetails = () => {
               <div>
                 <div className="grid grid-cols-2 gap-4 mb-6">
                   <div className="flex items-center">
-                    <svg className="w-6 h-6 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-6 h-6 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">       
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                     <div>
@@ -176,8 +179,8 @@ const CarDetails = () => {
                     </div>
                   </div>
                   <div className="flex items-center">
-                    <svg className="w-6 h-6 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    <svg className="w-6 h-6 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">       
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />   
                     </svg>
                     <div>
                       <h3 className="font-medium">Mileage</h3>
@@ -231,19 +234,19 @@ const CarDetails = () => {
                 <h2 className="text-xl font-semibold mb-4">Car Features</h2>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex items-center">
-                    <svg className="w-6 h-6 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-6 h-6 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">       
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                     <span>{car.color} exterior</span>
                   </div>
                   <div className="flex items-center">
-                    <svg className="w-6 h-6 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-6 h-6 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">       
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                     <span>{car.mileage} km mileage</span>
                   </div>
                   <div className="flex items-center">
-                    <svg className="w-6 h-6 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-6 h-6 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">       
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                     <span>Model year: {car.year}</span>
@@ -270,8 +273,8 @@ const CarDetails = () => {
                         <span className="font-medium">Cleanliness</span>
                         <div className="flex items-center">
                           <div className="w-48 h-2 bg-gray-200 rounded-full mr-2">
-                            <div 
-                              className="h-2 bg-blue-500 rounded-full" 
+                            <div
+                              className="h-2 bg-blue-500 rounded-full"
                               style={{ width: `${(ratings.categories?.cleanliness || 0) * 20}%` }}
                             ></div>
                           </div>
@@ -282,8 +285,8 @@ const CarDetails = () => {
                         <span className="font-medium">Maintenance</span>
                         <div className="flex items-center">
                           <div className="w-48 h-2 bg-gray-200 rounded-full mr-2">
-                            <div 
-                              className="h-2 bg-blue-500 rounded-full" 
+                            <div
+                              className="h-2 bg-blue-500 rounded-full"
                               style={{ width: `${(ratings.categories?.maintenance || 0) * 20}%` }}
                             ></div>
                           </div>
@@ -294,8 +297,8 @@ const CarDetails = () => {
                         <span className="font-medium">Communication</span>
                         <div className="flex items-center">
                           <div className="w-48 h-2 bg-gray-200 rounded-full mr-2">
-                            <div 
-                              className="h-2 bg-blue-500 rounded-full" 
+                            <div
+                              className="h-2 bg-blue-500 rounded-full"
                               style={{ width: `${(ratings.categories?.communication || 0) * 20}%` }}
                             ></div>
                           </div>
@@ -306,8 +309,8 @@ const CarDetails = () => {
                         <span className="font-medium">Convenience</span>
                         <div className="flex items-center">
                           <div className="w-48 h-2 bg-gray-200 rounded-full mr-2">
-                            <div 
-                              className="h-2 bg-blue-500 rounded-full" 
+                            <div
+                              className="h-2 bg-blue-500 rounded-full"
                               style={{ width: `${(ratings.categories?.convenience || 0) * 20}%` }}
                             ></div>
                           </div>

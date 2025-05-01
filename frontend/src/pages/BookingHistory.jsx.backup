@@ -1,13 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getUserBookings, updateBookingStatus } from '../api/bookings';
+import { checkRatingEligibility } from '../api/ratings';
+import RatingForm from '../components/ratings/RatingForm';
+import StarRating from '../components/common/StarRating';
 
 const BookingHistory = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('current');
-  
+  const [ratingBooking, setRatingBooking] = useState(null);
+  const [ratingEligibility, setRatingEligibility] = useState({});
+
   const userRole = localStorage.getItem('userRole');
   const isRenter = userRole === 'renter';
 
@@ -21,6 +26,15 @@ const BookingHistory = () => {
       const response = await getUserBookings();
       if (response.success) {
         setBookings(response.data);
+
+        // Check rating eligibility for completed bookings
+        const completedBookings = response.data.filter(booking =>
+          booking.status === 'completed'
+        );
+
+        for (const booking of completedBookings) {
+          await checkEligibility(booking.id);
+        }
       } else {
         setError(response.error);
       }
@@ -31,20 +45,63 @@ const BookingHistory = () => {
     }
   };
 
+  const checkEligibility = async (bookingId) => {
+    try {
+      const response = await checkRatingEligibility(bookingId);
+      if (response.success) {
+        setRatingEligibility(prev => ({
+          ...prev,
+          [bookingId]: response.data
+        }));
+      }
+    } catch (err) {
+      console.error(`Error checking rating eligibility for booking ${bookingId}:`, err);
+    }
+  };
+
   const handleStatusUpdate = async (bookingId, status) => {
     try {
       const response = await updateBookingStatus(bookingId, status);
       if (response.success) {
         // Update booking in state
-        setBookings(bookings.map(booking => 
+        setBookings(bookings.map(booking =>
           booking.id === bookingId ? { ...booking, status } : booking
         ));
+
+        // If booking is completed, check rating eligibility
+        if (status === 'completed') {
+          await checkEligibility(bookingId);
+        }
       } else {
         setError(response.error);
       }
     } catch (err) {
       setError('Failed to update booking status');
     }
+  };
+
+  const handleRateBooking = (booking) => {
+    setRatingBooking(booking);
+  };
+
+  const handleRatingComplete = () => {
+    // Update eligibility after rating is submitted
+    if (ratingBooking) {
+      setRatingEligibility(prev => ({
+        ...prev,
+        [ratingBooking.id]: {
+          ...prev[ratingBooking.id],
+          eligible: false,
+          hasRated: true
+        }
+      }));
+    }
+
+    setRatingBooking(null);
+  };
+
+  const handleRatingCancel = () => {
+    setRatingBooking(null);
   };
 
   const getStatusBadgeClass = (status) => {
@@ -66,22 +123,20 @@ const BookingHistory = () => {
 
   // Filter bookings based on the active tab
   const currentDate = new Date();
-  
-  // Current bookings - accepted bookings with end_date >= today
-  const currentBookings = bookings.filter(booking => 
-    booking.status === 'accepted' && 
-    new Date(booking.end_date) >= currentDate
+
+  // Current bookings - accepted bookings (only move to past if status is completed or end_date has passed)
+  const currentBookings = bookings.filter(booking =>
+    booking.status === 'accepted'
   );
-  
+
   // Pending bookings - bookings with status 'pending'
-  const pendingBookings = bookings.filter(booking => 
+  const pendingBookings = bookings.filter(booking =>
     booking.status === 'pending'
   );
-  
-  // Past bookings - completed bookings or accepted bookings with end_date < today
-  const pastBookings = bookings.filter(booking => 
-    booking.status === 'completed' || 
-    (booking.status === 'accepted' && new Date(booking.end_date) < currentDate) ||
+
+  // Past bookings - completed bookings, rejected, or canceled
+  const pastBookings = bookings.filter(booking =>
+    booking.status === 'completed' ||
     booking.status === 'rejected' ||
     booking.status === 'canceled'
   );
@@ -108,10 +163,25 @@ const BookingHistory = () => {
     );
   }
 
+  // If rating a booking, show the rating form
+  if (ratingBooking) {
+    return (
+      <div className="container mx-auto p-6">
+        <h1 className="text-3xl font-bold mb-6">Rate Your Experience</h1>
+        <RatingForm
+          booking={ratingBooking}
+          isRenter={isRenter}
+          onSuccess={handleRatingComplete}
+          onCancel={handleRatingCancel}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto p-6">
       <h1 className="text-3xl font-bold mb-6">
-        {isRenter ? 'Your Bookings' : 'Booking Requests'}
+        {isRenter ? 'Booking Requests' : 'Booking Requests'}
       </h1>
 
       {error && (
@@ -185,7 +255,7 @@ const BookingHistory = () => {
           {isRenter && (
             <Link
               to="/cars/search"
-              className="inline-block bg-blue-600 text-white font-medium py-2 px-4 rounded hover:bg-blue-700 transition"
+              className="inline-block bg-blue-600 text-white font-medium py-2 px-4 rounded hover:bg-blue-700 transition"     
             >
               Find a car to rent
             </Link>
@@ -194,7 +264,7 @@ const BookingHistory = () => {
       ) : (
         <div className="grid grid-cols-1 gap-6">
           {getFilteredBookings().map(booking => (
-            <div key={booking.id} className="bg-white rounded-lg shadow-md overflow-hidden flex flex-col md:flex-row">
+            <div key={booking.id} className="bg-white rounded-lg shadow-md overflow-hidden flex flex-col md:flex-row">       
               <div className="md:w-1/3 bg-gray-200">
                 {booking.image ? (
                   <img
@@ -218,7 +288,7 @@ const BookingHistory = () => {
                       {new Date(booking.start_date).toLocaleDateString()} to {new Date(booking.end_date).toLocaleDateString()}
                     </p>
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusBadgeClass(booking.status)}`}>
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusBadgeClass(booking.status)}`}>     
                     {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                   </span>
                 </div>
@@ -233,15 +303,23 @@ const BookingHistory = () => {
                       {isRenter ? 'Car Owner' : 'Renter'}
                     </h3>
                     <p className="font-medium">
-                      {isRenter ? booking.host_name : booking.renter_name}
+                      {isRenter ? (
+                        <Link to={`/profile/${booking.host_id}`} className="hover:underline text-blue-600">
+                          {booking.host_name}
+                        </Link>
+                      ) : (
+                        <Link to={`/profile/${booking.renter_id}`} className="hover:underline text-blue-600">
+                          {booking.renter_name}
+                        </Link>
+                      )}
                     </p>
                   </div>
                 </div>
 
                 {/* Action buttons based on role and booking status */}
-                <div className="mt-4 flex space-x-2">
+                <div className="mt-4 flex flex-wrap gap-2">
                   {/* View car details button for both roles */}
-                  <Link 
+                  <Link
                     to={`/cars/${booking.car_id}`}
                     className="inline-block bg-blue-100 text-blue-700 py-1 px-3 rounded-full text-sm font-medium hover:bg-blue-200 transition"
                   >
@@ -276,14 +354,44 @@ const BookingHistory = () => {
                     </button>
                   )}
 
-                  {/* Trip completed button for host when trip is current */}
-                  {!isRenter && booking.status === 'accepted' && new Date(booking.end_date) <= currentDate && (
+                  {/* Trip completed button ONLY for host when trip end date has passed */}
+                  {!isRenter && booking.status === 'accepted' && new Date(booking.end_date) < currentDate && (
                     <button
                       onClick={() => handleStatusUpdate(booking.id, 'completed')}
                       className="bg-blue-600 text-white py-1 px-3 rounded-full text-sm font-medium hover:bg-blue-700 transition"
                     >
                       Mark as Completed
                     </button>
+                  )}
+
+                  {/* Message button for both roles if booking is accepted or completed */}
+                  {(booking.status === 'accepted' || booking.status === 'completed') && (
+                    <Link
+                      to={isRenter ? `/messages/${booking.host_id}` : `/messages/${booking.renter_id}`}
+                      className="inline-block bg-purple-100 text-purple-700 py-1 px-3 rounded-full text-sm font-medium hover:bg-purple-200 transition"
+                    >
+                      Message
+                    </Link>
+                  )}
+
+                  {/* Rating button for completed bookings if eligible */}
+                  {booking.status === 'completed' && ratingEligibility[booking.id]?.eligible && (
+                    <button
+                      onClick={() => handleRateBooking(booking)}
+                      className="bg-yellow-500 text-white py-1 px-3 rounded-full text-sm font-medium hover:bg-yellow-600 transition"
+                    >
+                      Leave Rating
+                    </button>
+                  )}
+
+                  {/* Show if already rated */}
+                  {booking.status === 'completed' && ratingEligibility[booking.id]?.hasRated && (
+                    <span className="inline-flex items-center bg-green-100 text-green-800 py-1 px-3 rounded-full text-sm font-medium">
+                      <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                      Rated
+                    </span>
                   )}
                 </div>
               </div>

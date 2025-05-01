@@ -15,3 +15,111 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* Custom styles for map markers */
+.marker-label {
+  background-color: black !important;
+  color: white !important;
+  padding: 4px 8px !important;
+  border-radius: 4px !important;
+  font-weight: bold !important;
+  white-space: nowrap;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Make price markers show on top of other elements */
+.gm-style .gm-style-iw-c {
+  z-index: 1000 !important;
+}
+
+/* Make the app take full height */
+html, body, #root {
+  height: 100%;
+}
+
+/* Split view styles */
+.split-view-container {
+  display: flex;
+  height: 100%;
+}
+
+.split-view-sidebar {
+  width: 360px;
+  overflow-y: auto;
+  border-right: 1px solid #e5e7eb;
+}
+
+.split-view-map {
+  flex: 1;
+}
+
+@media (max-width: 768px) {
+  .split-view-container {
+    flex-direction: column;
+  }
+  
+  .split-view-sidebar {
+    width: 100%;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  
+  .split-view-map {
+    height: 70vh;
+  }
+}
+
+/* Custom styles for map markers */
+.marker-label {
+  background-color: black !important;
+  color: white !important;
+  padding: 4px 8px !important;
+  border-radius: 4px !important;
+  font-weight: bold !important;
+  white-space: nowrap;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Make price markers show on top of other elements */
+.gm-style .gm-style-iw-c {
+  z-index: 1000 !important;
+}
+
+/* Make the app take full height */
+html, body, #root {
+  height: 100%;
+}
+
+/* Split view styles */
+.split-view-container {
+  display: flex;
+  height: 100%;
+}
+
+.split-view-sidebar {
+  width: 360px;
+  overflow-y: auto;
+  border-right: 1px solid #e5e7eb;
+}
+
+.split-view-map {
+  flex: 1;
+}
+
+@media (max-width: 768px) {
+  .split-view-container {
+    flex-direction: column;
+  }
+  
+  .split-view-sidebar {
+    width: 100%;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  
+  .split-view-map {
+    height: 70vh;
+  }
+}
