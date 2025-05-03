@@ -1,0 +1,21 @@
+=== MERGE REVIEW FOR: ./frontend/src/components/common/Navbar.jsx.bak ===
+Compared with: ./frontend/src/components/common/Navbar.jsx
+Generated on: Sat May  3 18:19:30 +03 2025
+====================================
+
+DIFFERENCES (UNIQUE CONTENT IN BACKUP FILE):
+-----------------------------------
++import React, { useState } from 'react';
++import axios from 'axios';
++
++
++
++
++
++
++
++
++
++
++
++

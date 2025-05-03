@@ -1,0 +1,8 @@
+=== MERGE REVIEW FOR: ./frontend/src/components/cars/LocationPicker.jsx.bak ===
+Compared with: ./frontend/src/components/cars/LocationPicker.jsx
+Generated on: Sat May  3 18:19:29 +03 2025
+====================================
+
+DIFFERENCES (UNIQUE CONTENT IN BACKUP FILE):
+-----------------------------------
+No unique content found.

@@ -1,0 +1,9 @@
+=== MERGE REVIEW FOR: ./frontend/src/components/cars/CarFilter.jsx.backup ===
+Compared with: ./frontend/src/components/cars/CarFilter.jsx
+Generated on: Sat May  3 18:19:29 +03 2025
+====================================
+
+DIFFERENCES (UNIQUE CONTENT IN BACKUP FILE):
+-----------------------------------
++import { COLOR_OPTIONS, FEATURE_OPTIONS, YEAR_OPTIONS } from '../../constants/filters';
+No unique content found.

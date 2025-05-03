@@ -1,0 +1,15 @@
+=== FIX SCRIPT ANALYSIS: ./frontend/node_modules/core-js-pure/internals/fix-regexp-well-known-symbol-logic.js ===
+Generated on: Sat May  3 18:20:22 +03 2025
+=======================================
+
+CONTENT:
+---------
+// empty
+
+AFFECTED FILES (BASED ON REFERENCES):
+------------------------------------
+
+RECOMMENDATION:
+----------------
+This fix script should be manually integrated into the main codebase.
+After integration, the fix script can be deleted.

@@ -1,0 +1,215 @@
+=== FIX SCRIPT ANALYSIS: ./fix-remaining-issues.sh ===
+Generated on: Sat May  3 18:20:22 +03 2025
+=======================================
+
+CONTENT:
+---------
+#!/bin/bash
+# Fix remaining issues from the previous script run
+
+echo "======================================"
+echo "Fixing Remaining Issues"
+echo "======================================"
+echo ""
+
+# Extract database password from .env file
+DB_PASSWORD=$(grep "DB_PASSWORD" .env | cut -d'=' -f2)
+
+# Fix image handling using the correct password
+echo "1. Fixing image path standardization..."
+cat > fix-image-paths-temp.js << EOFJS
+const db = require('./backend/src/config/database');
+const path = require('path');
+const fs = require('fs');
+
+async function fixImagePaths() {
+  console.log('Starting image path standardization process...');
+
+  try {
+    // Define a normalizeImagePath function
+    const normalizeImagePath = (originalPath, type = 'cars') => {
+      if (!originalPath) return null;
+    
+      // Goal is to store as: "uploads/cars/filename.jpg"
+      
+      // If it's already in the correct format, return it
+      if (originalPath.startsWith("uploads/") && originalPath.includes(\`/\${type}/\`)) {
+        return originalPath;
+      }
+      
+      // Extract filename and normalize
+      const filename = path.basename(originalPath);
+      return \`uploads/\${type}/\${filename}\`;
+    };
+
+    // Get all car records with images
+    const carResults = await db.query('SELECT id, image FROM cars WHERE image IS NOT NULL');
+    console.log(\`Found \${carResults.rows.length} cars with images to process\`);
+
+    let updatedCarsCount = 0;
+
+    // Process each car record
+    for (const car of carResults.rows) {
+      const originalPath = car.image;
+      const normalizedPath = normalizeImagePath(originalPath, 'cars');
+
+      // If the path has changed, update it
+      if (originalPath !== normalizedPath) {
+        console.log(\`Updating car ID \${car.id}:\`);
+        console.log(\`  Original: \${originalPath}\`);
+        console.log(\`  Normalized: \${normalizedPath}\`);
+
+        await db.query('UPDATE cars SET image = $1 WHERE id = $2', [normalizedPath, car.id]);
+        updatedCarsCount++;
+      }
+    }
+
+    console.log(\`Updated \${updatedCarsCount} car image paths\`);
+
+    // Get all user records with license images
+    const userResults = await db.query('SELECT id, license_image FROM users WHERE license_image IS NOT NULL');
+    console.log(\`Found \${userResults.rows.length} users with license images to process\`);
+
+    let updatedUsersCount = 0;
+
+    // Process each user record
+    for (const user of userResults.rows) {
+      const originalPath = user.license_image;
+      const normalizedPath = normalizeImagePath(originalPath, 'licenses');
+
+      // If the path has changed, update it
+      if (originalPath !== normalizedPath) {
+        console.log(\`Updating user ID \${user.id}:\`);
+        console.log(\`  Original: \${originalPath}\`);
+        console.log(\`  Normalized: \${normalizedPath}\`);
+
+        await db.query('UPDATE users SET license_image = $1 WHERE id = $2', [normalizedPath, user.id]);
+        updatedUsersCount++;
+      }
+    }
+
+    console.log(\`Updated \${updatedUsersCount} user license image paths\`);
+    console.log('Image path standardization process completed successfully');
+
+  } catch (err) {
+    console.error('Error fixing image paths:', err);
+  } finally {
+    // Close the database pool
+    setTimeout(() => process.exit(0), 1000);
+  }
+}
+
+// Execute the function
+fixImagePaths();
+EOFJS
+
+# Update the .env file temporarily for script execution
+cp .env .env.bak
+sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=$DB_PASSWORD/" .env
+
+# Run the fix script
+echo "Running image path fix script..."
+node fix-image-paths-temp.js
+rm fix-image-paths-temp.js
+
+# Restore original .env
+mv .env.bak .env
+
+# Fix SQL booking script with correct password
+echo "2. Applying database fixes for double booking prevention..."
+cat > fix-double-booking-temp.sql << EOFSQL
+-- Update the prevent_double_booking function to skip validation for completed bookings
+CREATE OR REPLACE FUNCTION prevent_double_booking()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Skip validation for completed or canceled bookings
+    IF NEW.status IN ('completed', 'canceled') THEN
+        RETURN NEW;
+    END IF;
+
+    IF NOT is_car_available(NEW.car_id, NEW.start_date, NEW.end_date) THEN
+        RAISE EXCEPTION 'Car is not available for the selected dates';
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+EOFSQL
+
+# Create a temp script to run the SQL
+echo "Setting up database connection..."
+cat > run-sql-fix.js << EOFJS
+const { Pool } = require('pg');
+const fs = require('fs');
+
+const pool = new Pool({
+  user: process.env.DB_USER || 'postgres',
+  host: process.env.DB_HOST || 'localhost',
+  database: process.env.DB_NAME || 'sayarati',
+  password: "$DB_PASSWORD",
+  port: process.env.DB_PORT || 5432
+});
+
+async function runSQL() {
+  const client = await pool.connect();
+  try {
+    const sql = fs.readFileSync('fix-double-booking-temp.sql', 'utf8');
+    await client.query(sql);
+    console.log('SQL executed successfully');
+  } catch (err) {
+    console.error('Error executing SQL:', err);
+  } finally {
+    client.release();
+    pool.end();
+  }
+}
+
+runSQL();
+EOFJS
+
+node run-sql-fix.js
+rm run-sql-fix.js
+rm fix-double-booking-temp.sql
+
+# Fix the app.js update in the booking system script
+echo "3. Fixing booking scheduler in app.js..."
+# Check if scheduler is already included
+grep -q "startScheduler()" backend/src/app.js
+if [ $? -ne 0 ]; then
+  echo "Adding scheduler to app.js..."
+  # Fix the sed command syntax error
+  sed -i '/const helmet = require/a const startScheduler = require("./scheduleTasks");' backend/src/app.js
+  sed -i '/createCarRatingsTable()/a // Start scheduler\nstartScheduler();' backend/src/app.js
+  echo "Scheduler added successfully"
+else
+  echo "Scheduler already exists in app.js, no changes needed"
+fi
+
+echo "4. Reminder for manual LocationPicker update..."
+echo "Don't forget to update the LocationPicker.jsx file with error handling code"
+echo "from location-picker-error-handling.js as instructed."
+
+echo "======================================"
+echo "All remaining issues have been fixed!"
+echo "======================================"
+echo ""
+echo "Next steps:"
+echo "1. Update LocationPicker.jsx with error handling code"
+echo "2. Restart the backend server: cd backend && npm run dev"
+echo "3. Restart the frontend server: cd frontend && npm start"
+echo ""
+
+AFFECTED FILES (BASED ON REFERENCES):
+------------------------------------
+./backend/src/config/database
+path
+fs
+pg
+fs
+./scheduleTasks
+fix-double-booking-temp.sql', 'utf8
+
+RECOMMENDATION:
+----------------
+This fix script should be manually integrated into the main codebase.
+After integration, the fix script can be deleted.

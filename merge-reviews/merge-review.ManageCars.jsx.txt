@@ -1,0 +1,9 @@
+=== MERGE REVIEW FOR: ./frontend/src/pages/ManageCars.jsx.backup-1745527340 ===
+Compared with: ./frontend/src/pages/ManageCars.jsx
+Generated on: Sat May  3 18:19:31 +03 2025
+====================================
+
+DIFFERENCES (UNIQUE CONTENT IN BACKUP FILE):
+-----------------------------------
++import axios from 'axios';
+No unique content found.

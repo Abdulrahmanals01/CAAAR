@@ -1,0 +1,13 @@
+=== MERGE REVIEW FOR: ./backend/src/routes/carRoutes.js.bak ===
+Compared with: ./backend/src/routes/carRoutes.js
+Generated on: Sat May  3 18:19:28 +03 2025
+====================================
+
+DIFFERENCES (UNIQUE CONTENT IN BACKUP FILE):
+-----------------------------------
++// GET - Get all cars (public endpoint)
++router.get('/', carController.getCars);
++
++// GET - Get car by ID (public endpoint)
++router.get('/:id', carController.getCarById);
++

@@ -1,0 +1,12 @@
+=== MERGE REVIEW FOR: ./backend/src/config/multer.js.bak ===
+Compared with: ./backend/src/config/multer.js
+Generated on: Sat May  3 18:19:26 +03 2025
+====================================
+
+DIFFERENCES (UNIQUE CONTENT IN BACKUP FILE):
+-----------------------------------
++if (!fs.existsSync(licensesDir)) {
++}
++if (!fs.existsSync(carsDir)) {
++}
++// File filter

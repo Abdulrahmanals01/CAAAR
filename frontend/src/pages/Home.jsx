@@ -9,18 +9,9 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [activeAccordion, setActiveAccordion] = useState(null);
 
-  // Car makes with image placeholders
-  const carMakes = [
-    { name: 'Toyota', image: '/assets/images/car-placeholder.jpg' },
-    { name: 'Honda', image: '/assets/images/car-placeholder.jpg' },
-    { name: 'BMW', image: '/assets/images/car-placeholder.jpg' },
-    { name: 'Mercedes', image: '/assets/images/car-placeholder.jpg' },
-    { name: 'Lexus', image: '/assets/images/car-placeholder.jpg' }
-  ];
-
   // Popular destinations
   const destinations = [
-    { name: 'Riyadh', icon: '🏙️' },
+    { name: 'Riyadh', icon: '��️' },
     { name: 'Jeddah', icon: '🌊' },
     { name: 'Dammam', icon: '🏝️' },
     { name: 'Mecca', icon: '🕋' },
@@ -112,47 +103,26 @@ const Home = () => {
             <h2 className="text-2xl font-bold mb-8 text-center">How Sayarati Works</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="text-center">
-                <div className="bg-blue-100 w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center">        
+                <div className="bg-blue-100 w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center">      
                   <span className="text-blue-600 text-2xl font-bold">1</span>
                 </div>
                 <h3 className="text-xl font-semibold mb-2">Search for a Car</h3>
                 <p className="text-gray-600">Find the perfect car for your needs and schedule in our diverse selection.</p>
               </div>
               <div className="text-center">
-                <div className="bg-blue-100 w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center">        
+                <div className="bg-blue-100 w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center">      
                   <span className="text-blue-600 text-2xl font-bold">2</span>
                 </div>
                 <h3 className="text-xl font-semibold mb-2">Book Your Trip</h3>
-                <p className="text-gray-600">Book instantly with your verified account. No waiting for approval.</p>      
+                <p className="text-gray-600">Book instantly with your verified account. No waiting for approval.</p>    
               </div>
               <div className="text-center">
-                <div className="bg-blue-100 w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center">        
+                <div className="bg-blue-100 w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center">      
                   <span className="text-blue-600 text-2xl font-bold">3</span>
                 </div>
                 <h3 className="text-xl font-semibold mb-2">Hit the Road</h3>
-                <p className="text-gray-600">Pick up the car and enjoy your journey with full insurance coverage.</p>     
+                <p className="text-gray-600">Pick up the car and enjoy your journey with full insurance coverage.</p>   
               </div>
-            </div>
-          </div>
-
-          {/* Browse by make section */}
-          <div className="mt-16">
-            <h2 className="text-2xl font-bold mb-8">Browse by make</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-              {carMakes.map((make, index) => (
-                <Link 
-                  key={index} 
-                  to={`/cars?brand=${make.name}`} 
-                  className="bg-white rounded-lg shadow hover:shadow-md transition-shadow overflow-hidden"
-                >
-                  <img 
-                    src={make.image} 
-                    alt={`${make.name} cars`} 
-                    className="w-full h-32 object-cover"
-                  />
-                  <div className="p-3 text-center font-medium">{make.name}</div>
-                </Link>
-              ))}
             </div>
           </div>
 
@@ -161,9 +131,9 @@ const Home = () => {
             <h2 className="text-2xl font-bold mb-8">Browse by destination</h2>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
               {destinations.map((destination, index) => (
-                <Link 
-                  key={index} 
-                  to={`/cars?location=${destination.name}`} 
+                <Link
+                  key={index}
+                  to={`/cars?location=${destination.name}`}
                   className="bg-white rounded-lg shadow hover:shadow-md transition-shadow p-4 text-center"
                 >
                   <div className="text-4xl mb-2">{destination.icon}</div>
@@ -180,8 +150,8 @@ const Home = () => {
                 <div className="text-4xl mb-4">🚗</div>
                 <h3 className="text-2xl font-bold mb-2">Book a car</h3>
                 <p className="mb-6">Down the street or across the country, find the perfect vehicle for your next adventure.</p>
-                <Link 
-                  to="/cars" 
+                <Link
+                  to="/cars"
                   className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
                 >
                   Browse cars
@@ -191,8 +161,8 @@ const Home = () => {
                 <div className="text-4xl mb-4">🔑</div>
                 <h3 className="text-2xl font-bold mb-2">Become a host</h3>
                 <p className="mb-6">Accelerate your entrepreneurship and start building a small car sharing business on Sayarati.</p>
-                <Link 
-                  to="/register" 
+                <Link
+                  to="/register"
                   className="bg-purple-600 text-white px-6 py-2 rounded hover:bg-purple-700"
                 >
                   Get started
@@ -208,7 +178,7 @@ const Home = () => {
               {faqItems.map((item, index) => (
                 <div key={index} className="border border-gray-200 rounded-lg overflow-hidden">
                   <button
-                    className="flex items-center justify-between w-full p-4 text-left bg-white hover:bg-gray-50"
+                    className="flex items-center justify-between w-full p-4 text-left bg-white hover:bg-gray-50"        
                     onClick={() => toggleAccordion(index)}
                   >
                     <span className="font-medium">{item.question}</span>

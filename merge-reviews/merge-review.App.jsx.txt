@@ -1,0 +1,10 @@
+=== MERGE REVIEW FOR: ./frontend/src/App.jsx.backup-support ===
+Compared with: ./frontend/src/App.jsx
+Generated on: Sat May  3 18:19:29 +03 2025
+====================================
+
+DIFFERENCES (UNIQUE CONTENT IN BACKUP FILE):
+-----------------------------------
++import React from 'react';
++
++// Import chat pages

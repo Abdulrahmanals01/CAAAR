@@ -86,6 +86,13 @@ const ListCar = () => {
       setLoading(false);
       return;
     }
+    
+    // Image validation
+    if (!image) {
+      setError('Please upload a photo of your car');
+      setLoading(false);
+      return;
+    }
 
     try {
       // Get selected features as an array
@@ -312,6 +319,7 @@ const ListCar = () => {
                   value={formData.location}
                   onChange={handleChange}
                   required
+                  maxLength="90"
                   placeholder="Riyadh, Jeddah, Dammam..."
                   className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
@@ -407,6 +415,7 @@ const ListCar = () => {
                 onChange={handleImageChange}
                 accept="image/*"
                 className="hidden"
+                required
               />
               <label
                 htmlFor="car-image"
@@ -420,7 +429,7 @@ const ListCar = () => {
                       </svg>
                     </div>
                     <p className="mt-2 text-sm text-gray-500">
-                      Click to upload a photo of your car (Max size: 5MB)
+                      Click to upload a photo of your car (Required, Max size: 5MB)
                     </p>
                     <p className="mt-1 text-xs text-gray-400">
                       JPG, PNG or GIF

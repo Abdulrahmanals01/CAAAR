@@ -1,0 +1,8 @@
+=== MERGE REVIEW FOR: ./frontend/src/components/common/Footer.jsx.backup-1746272570 ===
+Compared with: ./frontend/src/components/common/Footer.jsx
+Generated on: Sat May  3 18:19:29 +03 2025
+====================================
+
+DIFFERENCES (UNIQUE CONTENT IN BACKUP FILE):
+-----------------------------------
+No unique content found.

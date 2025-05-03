@@ -1,7 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Link } from 'react-router-dom';
 
-const MapView = ({ cars, onCarSelect, searchLocation }) => {
+const MapView = ({ cars: initialCars, onCarSelect, searchLocation }) => {
+  // Log the incoming props for debugging
+  console.log('MapView received props:', { 
+    initialCarsCount: initialCars?.length, 
+    searchLocation
+  });
+  
+  const [cars, setCars] = useState(initialCars || []);
   const [map, setMap] = useState(null);
   const [markers, setMarkers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -64,6 +70,7 @@ const MapView = ({ cars, onCarSelect, searchLocation }) => {
         clearTimeout(mapLoadTimeoutRef.current);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Create and initialize the map
@@ -105,12 +112,30 @@ const MapView = ({ cars, onCarSelect, searchLocation }) => {
       setError('Failed to initialize Google Maps');
       setIsLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Process cars data once it's available
   useEffect(() => {
     // Skip if we've already processed this batch of cars or if there are no cars
     if (carsProcessed || !cars || cars.length === 0) return;
+
+    // Process cars to ensure valid coordinates
+    const processedCars = cars.map(car => {
+      if (car.latitude && car.longitude) {
+        return {
+          ...car,
+          latitude: parseFloat(car.latitude),
+          longitude: parseFloat(car.longitude)
+        };
+      }
+      return car;
+    });
+
+    // Replace the cars array with the processed one
+    if (processedCars.length > 0) {
+      setCars(processedCars);
+    }
 
     // Set a flag to indicate cars are being processed
     setCarsProcessed(true);
@@ -123,26 +148,66 @@ const MapView = ({ cars, onCarSelect, searchLocation }) => {
         !isNaN(parseFloat(car.longitude))
       ).length
     );
-  }, [cars, carsProcessed]);
+  }, [cars, carsProcessed, setCars]);
 
-  // Reset the carsProcessed flag when cars array changes
+  // Update local state when prop changes and reset the carsProcessed flag
   useEffect(() => {
+    setCars(initialCars || []);
     setCarsProcessed(false);
-  }, [cars]);
+  }, [initialCars]);
 
-  // Update markers when map is ready AND cars change
-  useEffect(() => {
-    // Only proceed if both the map is ready and we have cars to display
-    if (!map || !cars || cars.length === 0) {
+  // Simple debug function to log car data
+  const logCarCoordinates = (cars) => {
+    if (!cars || cars.length === 0) {
+      console.log('No cars to display');
       return;
     }
-
+    
+    console.log(`Checking coordinates for ${cars.length} cars`);
+    const carsWithCoords = cars.filter(car => 
+      car && car.latitude && car.longitude && 
+      !isNaN(parseFloat(car.latitude)) && 
+      !isNaN(parseFloat(car.longitude))
+    );
+    
+    console.log(`Found ${carsWithCoords.length} cars with valid coordinates`);
+    
+    // Log the first few cars with their coordinates
+    carsWithCoords.slice(0, 3).forEach(car => {
+      console.log(`Car ID ${car.id}: ${car.brand} ${car.model}, Coords: [${car.latitude}, ${car.longitude}]`);
+    });
+  };
+  
+  // Update markers when map is ready AND cars change
+  useEffect(() => {
+    // Only proceed if the map is ready
+    if (!map) {
+      console.log('Map not ready yet');
+      return;
+    }
+    
+    // Check if we have cars
+    if (!cars || cars.length === 0) {
+      console.log('No cars to display on map');
+      return;
+    }
+    
+    // Log car data for debugging
+    logCarCoordinates(cars);
+    
     // Create markers function
     const createMarkers = () => {
       console.log('Creating markers - Map ready:', !!map, 'Cars count:', cars.length);
 
-      // Clear existing markers
-      markers.forEach(marker => marker.setMap(null));
+      // Clear all existing car markers (simpler approach)
+      if (markers) {
+        markers.forEach(marker => {
+          // Only clear car markers (not search markers)
+          if (!marker.getIcon() || typeof marker.getIcon() !== 'object') {
+            marker.setMap(null);
+          }
+        });
+      }
 
       // Create bounds to fit all markers
       const bounds = new window.google.maps.LatLngBounds();
@@ -166,12 +231,11 @@ const MapView = ({ cars, onCarSelect, searchLocation }) => {
           return;
         }
 
-        // Create marker
+        // Create new marker (simpler approach)
         const marker = new window.google.maps.Marker({
           position: { lat, lng },
           map: map,
-          title: `${car.brand || ''} ${car.model || ''}`.trim() || 'Car',
-          animation: window.google.maps.Animation.DROP
+          title: `${car.brand || ''} ${car.model || ''}`.trim() || 'Car'
         });
 
         // Create info window content
@@ -209,36 +273,49 @@ const MapView = ({ cars, onCarSelect, searchLocation }) => {
         validMarkerCount++;
       });
 
-      // Set markers in state
-      setMarkers(newMarkers);
+      console.log(`Created ${validMarkerCount} markers out of ${cars.length} cars`);
+
+      // Update markers in state
+      setMarkers(prev => {
+        // Keep search location markers
+        const searchMarkers = Array.isArray(prev) ? prev.filter(marker => 
+          marker && typeof marker.getIcon === 'function' && marker.getIcon() && 
+          typeof marker.getIcon() === 'object' && 
+          marker.getIcon().path === window.google.maps.SymbolPath.CIRCLE
+        ) : [];
+        return [...searchMarkers, ...newMarkers];
+      });
 
       // Fit map to markers if we have any
-      if (validMarkerCount > 0) {
-        console.log(`Created ${validMarkerCount} markers`);
+      if (validMarkerCount > 0 && !searchLocation) {
+        console.log(`Fitting map to ${validMarkerCount} markers`);
 
         if (validMarkerCount > 1) {
           map.fitBounds(bounds);
 
           // Don't zoom in too far
-          const listener = window.google.maps.event.addListenerOnce(map, 'idle', () => {
+          window.google.maps.event.addListenerOnce(map, 'idle', () => {
             if (map.getZoom() > 15) map.setZoom(15);
           });
         } else {
           // Single marker - center and zoom
-          map.setCenter(newMarkers[0].getPosition());
-          map.setZoom(14);
+          if (newMarkers.length > 0) {
+            const position = newMarkers[0].getPosition();
+            map.setCenter(position);
+            map.setZoom(14);
+          }
         }
-      } else {
-        // No markers - center on default location or search location
-        map.setCenter(defaultCenter);
-        map.setZoom(10);
-        console.log('No valid markers created, using default center');
       }
     };
 
+    // Create markers
     createMarkers();
-  }, [map, cars, onCarSelect, mapReady]);
+    
+  }, [map, cars, onCarSelect]);
 
+  // Reference to store the search location marker
+  const searchMarkerRef = useRef(null);
+  
   // Geocode and center map if search location changes
   useEffect(() => {
     if (!map || !searchLocation) return;
@@ -246,6 +323,18 @@ const MapView = ({ cars, onCarSelect, searchLocation }) => {
     console.log('Processing search location:', searchLocation);
 
     const geocoder = new window.google.maps.Geocoder();
+
+    // Remove any existing search marker
+    if (searchMarkerRef.current) {
+      searchMarkerRef.current.setMap(null);
+      searchMarkerRef.current = null;
+      
+      // Remove the search marker from the markers array
+      setMarkers(prev => prev.filter(marker => 
+        marker.getIcon() === undefined || 
+        (typeof marker.getIcon() === 'object' && marker.getIcon().path !== window.google.maps.SymbolPath.CIRCLE)
+      ));
+    }
 
     geocoder.geocode({ address: searchLocation + ', Saudi Arabia' }, (results, status) => {
       if (status === 'OK' && results && results.length > 0) {
@@ -256,7 +345,7 @@ const MapView = ({ cars, onCarSelect, searchLocation }) => {
         map.setZoom(13); // Set an appropriate zoom level for city search
 
         // Add a marker for the location with a distinctive look
-        const marker = new window.google.maps.Marker({
+        const searchMarker = new window.google.maps.Marker({
           position: location,
           map: map,
           title: results[0].formatted_address || searchLocation,
@@ -267,11 +356,16 @@ const MapView = ({ cars, onCarSelect, searchLocation }) => {
             fillOpacity: 0.3,
             strokeColor: '#4285F4',
             strokeWeight: 2
-          }
+          },
+          // Make sure search marker stays on top
+          zIndex: 1000
         });
-
-        // Add to markers array
-        setMarkers(prev => [...prev, marker]);
+        
+        // Store reference to search marker
+        searchMarkerRef.current = searchMarker;
+        
+        // Add search marker to markers array
+        setMarkers(prev => [...prev, searchMarker]);
       } else {
         console.log('Geocoding failed for location:', searchLocation, 'Status:', status);
       }
@@ -282,7 +376,19 @@ const MapView = ({ cars, onCarSelect, searchLocation }) => {
   useEffect(() => {
     return () => {
       // Clear all markers when component unmounts
-      markers.forEach(marker => marker.setMap(null));
+      if (markers && markers.length > 0) {
+        markers.forEach(marker => {
+          if (marker && marker.setMap) {
+            marker.setMap(null);
+          }
+        });
+      }
+      
+      // Clear search marker
+      if (searchMarkerRef.current) {
+        searchMarkerRef.current.setMap(null);
+        searchMarkerRef.current = null;
+      }
     };
   }, [markers]);
 

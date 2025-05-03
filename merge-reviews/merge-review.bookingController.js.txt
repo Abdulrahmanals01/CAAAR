@@ -1,0 +1,25 @@
+=== MERGE REVIEW FOR: ./backend/src/controllers/bookingController.js.bak ===
+Compared with: ./backend/src/controllers/bookingController.js
+Generated on: Sat May  3 18:19:27 +03 2025
+====================================
+
+DIFFERENCES (UNIQUE CONTENT IN BACKUP FILE):
+-----------------------------------
++// Create a new booking
++exports.createBooking = async (req, res) => {
++// Get user's bookings
++exports.getUserBookings = async (req, res) => {
++// Update booking status (normal method)
++exports.updateBookingStatus = async (req, res) => {
++
++// Special function to handle cancellation
++
++
++
++
++
++
++
++
++
++

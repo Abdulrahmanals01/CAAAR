@@ -1,0 +1,9 @@
+=== MERGE REVIEW FOR: ./frontend/src/components/cars/MapView.jsx.backup ===
+Compared with: ./frontend/src/components/cars/MapView.jsx
+Generated on: Sat May  3 18:19:29 +03 2025
+====================================
+
+DIFFERENCES (UNIQUE CONTENT IN BACKUP FILE):
+-----------------------------------
++import React, { useState, useEffect, useRef } from 'react';
+No unique content found.

@@ -1,0 +1,85 @@
+=== FIX SCRIPT ANALYSIS: ./backend/fix-admin-tables.js ===
+Generated on: Sat May  3 18:20:20 +03 2025
+=======================================
+
+CONTENT:
+---------
+const db = require('./src/config/database');
+
+async function createAdminTrackingTables() {
+  try {
+    console.log('Checking for admin tracking tables...');
+
+    // Check if the tables already exist
+    const tableCheck = await db.query(
+      "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'admin_actions')"
+    );
+    
+    if (!tableCheck.rows[0].exists) {
+      console.log('Creating admin tracking tables...');
+
+      // Create deleted_listings table
+      await db.query(`
+        CREATE TABLE IF NOT EXISTS deleted_listings (
+          id SERIAL PRIMARY KEY,
+          original_id INTEGER NOT NULL,
+          brand VARCHAR(50) NOT NULL,
+          model VARCHAR(50) NOT NULL,
+          year INTEGER NOT NULL,
+          plate VARCHAR(20) NOT NULL,
+          price_per_day DECIMAL(10, 2) NOT NULL,
+          owner_id INTEGER NOT NULL,
+          owner_name VARCHAR(100) NOT NULL,
+          owner_email VARCHAR(100) NOT NULL,
+          deleted_by INTEGER NOT NULL REFERENCES users(id),
+          deleted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          reason TEXT
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_deleted_listings_owner_id ON deleted_listings(owner_id);
+        CREATE INDEX IF NOT EXISTS idx_deleted_listings_deleted_by ON deleted_listings(deleted_by);
+      `);
+
+      // Create admin_actions table
+      await db.query(`
+        CREATE TABLE IF NOT EXISTS admin_actions (
+          id SERIAL PRIMARY KEY,
+          admin_id INTEGER NOT NULL REFERENCES users(id),
+          admin_name VARCHAR(100) NOT NULL,
+          action_type VARCHAR(20) NOT NULL CHECK (action_type IN ('freeze', 'unfreeze', 'ban', 'unban', 'delete_listing')),  
+          target_type VARCHAR(20) NOT NULL CHECK (target_type IN ('user', 'listing')),
+          target_id INTEGER NOT NULL,
+          target_name VARCHAR(100) NOT NULL,
+          reason TEXT,
+          performed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          expires_at TIMESTAMP
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_admin_actions_admin_id ON admin_actions(admin_id);
+        CREATE INDEX IF NOT EXISTS idx_admin_actions_target ON admin_actions(target_type, target_id);
+      `);
+
+      console.log('Admin tracking tables created successfully');
+    } else {
+      console.log('Admin tracking tables already exist');
+    }
+
+    console.log('Database setup completed.');
+    process.exit(0);
+  } catch (err) {
+    console.error('Error creating admin tracking tables:', err);
+    process.exit(1);
+  }
+}
+
+// Execute the function
+createAdminTrackingTables();
+
+AFFECTED FILES (BASED ON REFERENCES):
+------------------------------------
+./src/config/database
+
+RECOMMENDATION:
+----------------
+This fix script should be manually integrated into the main codebase.
+After integration, the fix script can be deleted.

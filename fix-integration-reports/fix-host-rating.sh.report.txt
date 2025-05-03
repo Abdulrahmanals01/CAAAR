@@ -1,0 +1,839 @@
+=== FIX SCRIPT ANALYSIS: ./fix-host-rating.sh ===
+Generated on: Sat May  3 18:20:21 +03 2025
+=======================================
+
+CONTENT:
+---------
+#!/bin/bash
+
+# Create backup directories
+BACKUP_DIR="backups/$(date +%Y%m%d)"
+mkdir -p "$BACKUP_DIR"
+
+echo "Creating backups in $BACKUP_DIR..."
+
+# 1. First, create a missing Review.jsx page to handle the review/:bookingId route
+echo "Creating Review.jsx page..."
+cat > frontend/src/pages/Review.jsx << 'EOFREVIEW'
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { getUserBookings } from '../api/bookings';
+import { checkRatingEligibility } from '../api/ratings';
+import RatingForm from '../components/ratings/RatingForm';
+import useAuth from '../hooks/useAuth';
+
+const Review = () => {
+  const { bookingId } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [booking, setBooking] = useState(null);
+  const [eligibility, setEligibility] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const userRole = localStorage.getItem('userRole') || user?.role;
+  const isRenter = userRole === 'renter';
+
+  useEffect(() => {
+    const fetchBookingAndEligibility = async () => {
+      try {
+        setLoading(true);
+        
+        // First, check rating eligibility
+        const eligibilityResponse = await checkRatingEligibility(bookingId);
+        if (!eligibilityResponse.success) {
+          setError(eligibilityResponse.error || 'Failed to check rating eligibility');
+          setLoading(false);
+          return;
+        }
+
+        const eligibilityData = eligibilityResponse.data;
+        setEligibility(eligibilityData);
+
+        // If not eligible, show error
+        if (!eligibilityData.eligible) {
+          setError('You cannot rate this booking at this time. It may have already been rated or is not completed.');
+          setLoading(false);
+          return;
+        }
+
+        // Get booking details
+        const bookingsResponse = await getUserBookings();
+        if (!bookingsResponse.success) {
+          setError(bookingsResponse.error || 'Failed to load booking details');
+          setLoading(false);
+          return;
+        }
+
+        // Find the specific booking
+        const foundBooking = bookingsResponse.data.find(b => b.id.toString() === bookingId);
+        if (!foundBooking) {
+          setError('Booking not found');
+          setLoading(false);
+          return;
+        }
+
+        setBooking(foundBooking);
+        setLoading(false);
+      } catch (err) {
+        setError('An error occurred while loading the booking details');
+        setLoading(false);
+      }
+    };
+
+    fetchBookingAndEligibility();
+  }, [bookingId]);
+
+  const handleRatingSuccess = () => {
+    // Redirect to booking history
+    navigate('/booking-history');
+  };
+
+  const handleCancel = () => {
+    // Go back to booking history
+    navigate('/booking-history');
+  };
+
+  if (loading) {
+    return (
+      <div className="container mx-auto p-6 flex justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4">
+          {error}
+        </div>
+        <button
+          onClick={() => navigate('/booking-history')}
+          className="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700"
+        >
+          Back to Bookings
+        </button>
+      </div>
+    );
+  }
+
+  if (!booking) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4">
+          Booking not found
+        </div>
+        <button
+          onClick={() => navigate('/booking-history')}
+          className="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700"
+        >
+          Back to Bookings
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto p-6">
+      <h1 className="text-3xl font-bold mb-6">Rate Your Experience</h1>
+      <div className="mb-6 bg-gray-100 p-4 rounded-lg">
+        <h2 className="text-xl font-semibold mb-2">
+          {booking.brand} {booking.model} ({booking.year})
+        </h2>
+        <p className="text-gray-700">
+          {new Date(booking.start_date).toLocaleDateString()} - {new Date(booking.end_date).toLocaleDateString()}
+        </p>
+      </div>
+      <RatingForm
+        booking={booking}
+        isRenter={eligibility?.isRenter}
+        onSuccess={handleRatingSuccess}
+        onCancel={handleCancel}
+      />
+    </div>
+  );
+};
+
+export default Review;
+EOFREVIEW
+
+# 2. Update the BookingHistory.jsx to navigate to the review page
+echo "Backing up BookingHistory.jsx..."
+cp frontend/src/pages/BookingHistory.jsx "$BACKUP_DIR/BookingHistory.jsx.bak"
+
+echo "Updating BookingHistory.jsx..."
+cat > frontend/src/pages/BookingHistory.jsx.new << 'EOFBOOKINGHISTORY'
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { getUserBookings, updateBookingStatus } from '../api/bookings';
+import { checkRatingEligibility } from '../api/ratings';
+import useAuth from '../hooks/useAuth';
+import StarRating from '../components/common/StarRating';
+
+const BookingHistory = () => {
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState('current');
+  const [ratingEligibility, setRatingEligibility] = useState({});
+  const navigate = useNavigate();
+
+  const { user } = useAuth();
+  const userRole = localStorage.getItem('userRole') || user?.role;
+  const isRenter = userRole === 'renter';
+
+  useEffect(() => {
+    fetchBookings();
+  }, []);
+
+  const fetchBookings = async () => {
+    setLoading(true);
+    try {
+      const response = await getUserBookings();
+      if (response.success) {
+        setBookings(response.data);
+
+        // Check rating eligibility for completed bookings
+        const completedBookings = response.data.filter(booking =>
+          booking.status === 'completed'
+        );
+
+        console.log('Completed bookings found:', completedBookings.length);
+
+        for (const booking of completedBookings) {
+          await checkEligibility(booking.id);
+        }
+      } else {
+        setError(response.error);
+      }
+    } catch (err) {
+      setError('Failed to load bookings');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const checkEligibility = async (bookingId) => {
+    try {
+      console.log(`Checking rating eligibility for booking ${bookingId}`);
+      const response = await checkRatingEligibility(bookingId);
+
+      console.log('Eligibility check response:', response);
+
+      if (response.success) {
+        setRatingEligibility(prev => ({
+          ...prev,
+          [bookingId]: response.data
+        }));
+
+        console.log(`Rating eligibility for booking ${bookingId}:`, response.data);
+      } else {
+        console.warn(`Error checking eligibility: ${response.error}`);
+      }
+    } catch (err) {
+      console.error(`Error checking rating eligibility for booking ${bookingId}:`, err);
+    }
+  };
+
+  const handleStatusUpdate = async (bookingId, status) => {
+    try {
+      const response = await updateBookingStatus(bookingId, status);
+      if (response.success) {
+        // Update booking in state
+        setBookings(bookings.map(booking =>
+          booking.id === bookingId ? { ...booking, status } : booking
+        ));
+
+        // If booking is completed, check rating eligibility immediately
+        if (status === 'completed') {
+          console.log('Booking marked as completed, checking rating eligibility');
+          await checkEligibility(bookingId);
+        }
+      } else {
+        setError(response.error);
+      }
+    } catch (err) {
+      setError('Failed to update booking status');
+    }
+  };
+
+  const handleRateBooking = (bookingId) => {
+    // Navigate to the review page for this booking
+    navigate(`/review/${bookingId}`);
+  };
+
+  const getStatusBadgeClass = (status) => {
+    switch (status) {
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'accepted':
+        return 'bg-green-100 text-green-800';
+      case 'rejected':
+        return 'bg-red-100 text-red-800';
+      case 'canceled':
+        return 'bg-gray-100 text-gray-800';
+      case 'completed':
+        return 'bg-blue-100 text-blue-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  // Filter bookings based on the active tab
+  const currentDate = new Date();
+
+  // Current bookings - accepted bookings (only move to past if status is completed or end_date has passed)
+  const currentBookings = bookings.filter(booking =>
+    booking.status === 'accepted'
+  );
+
+  // Pending bookings - bookings with status 'pending'
+  const pendingBookings = bookings.filter(booking =>
+    booking.status === 'pending'
+  );
+
+  // Past bookings - completed bookings, rejected, or canceled
+  const pastBookings = bookings.filter(booking =>
+    booking.status === 'completed' ||
+    booking.status === 'rejected' ||
+    booking.status === 'canceled'
+  );
+
+  // Get the filtered bookings based on the active tab
+  const getFilteredBookings = () => {
+    switch (activeTab) {
+      case 'current':
+        return currentBookings;
+      case 'pending':
+        return pendingBookings;
+      case 'past':
+        return pastBookings;
+      default:
+        return bookings;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="container mx-auto p-6 flex justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto p-6">
+      <h1 className="text-3xl font-bold mb-6">
+        {isRenter ? 'Your Bookings' : 'Booking Requests'}
+      </h1>
+
+      {error && (
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded">
+          {error}
+        </div>
+      )}
+
+      {/* Tabs Navigation */}
+      <div className="mb-6 border-b border-gray-200">
+        <nav className="-mb-px flex">
+          <button
+            onClick={() => setActiveTab('current')}
+            className={`py-4 px-6 font-medium text-sm ${
+              activeTab === 'current'
+                ? 'border-b-2 border-blue-500 text-blue-600'
+                : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Current Trips
+            {currentBookings.length > 0 && (
+              <span className="ml-2 bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">        
+                {currentBookings.length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('pending')}
+            className={`py-4 px-6 font-medium text-sm ${
+              activeTab === 'pending'
+                ? 'border-b-2 border-blue-500 text-blue-600'
+                : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Pending
+            {pendingBookings.length > 0 && (
+              <span className="ml-2 bg-yellow-100 text-yellow-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">    
+                {pendingBookings.length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('past')}
+            className={`py-4 px-6 font-medium text-sm ${
+              activeTab === 'past'
+                ? 'border-b-2 border-blue-500 text-blue-600'
+                : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Past Trips
+            {pastBookings.length > 0 && (
+              <span className="ml-2 bg-gray-100 text-gray-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">        
+                {pastBookings.length}
+              </span>
+            )}
+          </button>
+        </nav>
+      </div>
+
+      {getFilteredBookings().length === 0 ? (
+        <div className="bg-white rounded-lg shadow-md p-8 text-center">
+          <div className="text-gray-500 mb-4 text-5xl">🚗</div>
+          <h3 className="text-xl font-semibold mb-2">No bookings found</h3>
+          <p className="text-gray-600 mb-6">
+            {activeTab === 'current'
+              ? "You don't have any current trips."
+              : activeTab === 'pending'
+              ? "You don't have any pending requests."
+              : "You don't have any past trips."}
+          </p>
+          {isRenter && (
+            <Link
+              to="/cars/search"
+              className="inline-block bg-blue-600 text-white font-medium py-2 px-4 rounded hover:bg-blue-700 transition"
+
+            >
+              Find a car to rent
+            </Link>
+          )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-6">
+          {getFilteredBookings().map(booking => {
+            // Check if rating is eligible
+            const eligibilityInfo = ratingEligibility[booking.id] || {};
+            const canRate = booking.status === 'completed' && eligibilityInfo.eligible === true;
+            const hasRated = eligibilityInfo.hasRated === true;
+
+            return (
+              <div key={booking.id} className="bg-white rounded-lg shadow-md overflow-hidden flex flex-col md:flex-row">
+
+                <div className="md:w-1/3 bg-gray-200">
+                  {booking.image ? (
+                    <img
+                      src={booking.image}
+                      alt={`${booking.brand} ${booking.model}`}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center">
+                      <p className="text-gray-500">No image available</p>
+                    </div>
+                  )}
+                </div>
+                <div className="p-6 md:w-2/3">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h2 className="text-xl font-bold">
+                        {booking.brand} {booking.model} ({booking.year})
+                      </h2>
+                      <p className="text-gray-600 mt-1">
+                        {new Date(booking.start_date).toLocaleDateString()} to {new Date(booking.end_date).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusBadgeClass(booking.status)}`}>
+                      {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <h3 className="text-gray-500 text-sm">Total Price</h3>
+                      <p className="font-medium">${booking.total_price}</p>
+                    </div>
+                    <div>
+                      <h3 className="text-gray-500 text-sm">
+                        {isRenter ? 'Car Owner' : 'Renter'}
+                      </h3>
+                      <p className="font-medium">
+                        {isRenter ? (
+                          <Link to={`/profile/${booking.host_id}`} className="hover:underline text-blue-600">
+                            {booking.host_name}
+                          </Link>
+                        ) : (
+                          <Link to={`/profile/${booking.renter_id}`} className="hover:underline text-blue-600">
+                            {booking.renter_name}
+                          </Link>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Action buttons based on role and booking status */}
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {/* View car details button for both roles */}
+                    <Link
+                      to={`/cars/${booking.car_id}`}
+                      className="inline-block bg-blue-100 text-blue-700 py-1 px-3 rounded-full text-sm font-medium hover:bg-blue-200 transition"
+                    >
+                      View Car Details
+                    </Link>
+
+                    {/* Host actions */}
+                    {!isRenter && booking.status === 'pending' && (
+                      <>
+                        <button
+                          onClick={() => handleStatusUpdate(booking.id, 'accepted')}
+                          className="bg-green-600 text-white py-1 px-3 rounded-full text-sm font-medium hover:bg-green-700 transition"
+                        >
+                          Accept
+                        </button>
+                        <button
+                          onClick={() => handleStatusUpdate(booking.id, 'rejected')}
+                          className="bg-red-600 text-white py-1 px-3 rounded-full text-sm font-medium hover:bg-red-700 transition"
+                        >
+                          Reject
+                        </button>
+                      </>
+                    )}
+
+                    {/* Renter actions */}
+                    {isRenter && booking.status === 'pending' && (
+                      <button
+                        onClick={() => handleStatusUpdate(booking.id, 'canceled')}
+                        className="bg-gray-600 text-white py-1 px-3 rounded-full text-sm font-medium hover:bg-gray-700 transition"
+                      >
+                        Cancel
+                      </button>
+                    )}
+
+                    {/* Trip completed button ONLY for host when trip end date has passed */}
+                    {!isRenter && booking.status === 'accepted' && new Date(booking.end_date) < currentDate && (        
+                      <button
+                        onClick={() => handleStatusUpdate(booking.id, 'completed')}
+                        className="bg-blue-600 text-white py-1 px-3 rounded-full text-sm font-medium hover:bg-blue-700 transition"
+                      >
+                        Mark as Completed
+                      </button>
+                    )}
+
+                    {/* Message button for both roles if booking is accepted or completed */}
+                    {(booking.status === 'accepted' || booking.status === 'completed') && (
+                      <Link
+                        to={isRenter ? `/messages/${booking.host_id}` : `/messages/${booking.renter_id}`}
+                        className="inline-block bg-purple-100 text-purple-700 py-1 px-3 rounded-full text-sm font-medium hover:bg-purple-200 transition"
+                      >
+                        Message
+                      </Link>
+                    )}
+
+                    {/* Rating button for completed bookings if eligible */}
+                    {booking.status === 'completed' && canRate && (
+                      <button
+                        onClick={() => handleRateBooking(booking.id)}
+                        className="bg-yellow-500 text-white py-1 px-3 rounded-full text-sm font-medium hover:bg-yellow-600 transition"
+                      >
+                        {isRenter ? 'Rate Host & Car' : 'Rate Renter'}
+                      </button>
+                    )}
+
+                    {/* Show if already rated */}
+                    {booking.status === 'completed' && hasRated && (
+                      <span className="inline-flex items-center bg-green-100 text-green-800 py-1 px-3 rounded-full text-sm font-medium">
+                        <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        Rated
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default BookingHistory;
+EOFBOOKINGHISTORY
+
+# Replace the original file with our updated version
+mv frontend/src/pages/BookingHistory.jsx.new frontend/src/pages/BookingHistory.jsx
+
+# 3. Update BookingRequests.jsx to also show rating buttons for completed bookings
+echo "Backing up BookingRequests.jsx..."
+if [ -f "frontend/src/pages/BookingRequests.jsx" ]; then
+  cp frontend/src/pages/BookingRequests.jsx "$BACKUP_DIR/BookingRequests.jsx.bak"
+
+  echo "Updating BookingRequests.jsx..."
+  cat > update-booking-requests.js << 'EOFUPDATEREQUEST'
+const fs = require('fs');
+const path = require('path');
+
+// Path to the BookingRequests.jsx file
+const bookingRequestsPath = path.join(__dirname, 'frontend/src/pages/BookingRequests.jsx');
+
+// Check if the file exists
+if (fs.existsSync(bookingRequestsPath)) {
+  // Read the file
+  let content = fs.readFileSync(bookingRequestsPath, 'utf8');
+
+  // Add the import for checkRatingEligibility
+  const importLine = 'import { updateBookingStatus } from \'../api/bookings\';';
+  const newImportLine = 'import { updateBookingStatus } from \'../api/bookings\';\nimport { checkRatingEligibility } from \'../api/ratings\';';
+  content = content.replace(importLine, newImportLine);
+  
+  // Add state for rating eligibility
+  const stateInitLine = '  const [processingBookingId, setProcessingBookingId] = useState(null);';
+  const newStateInitLine = '  const [processingBookingId, setProcessingBookingId] = useState(null);\n  const [ratingEligibility, setRatingEligibility] = useState({});';
+  content = content.replace(stateInitLine, newStateInitLine);
+  
+  // Add navigate import
+  if (!content.includes('useNavigate')) {
+    content = content.replace('import React, { useState, useEffect } from \'react\';', 'import React, { useState, useEffect } from \'react\';\nimport { useNavigate } from \'react-router-dom\';');
+    
+    // Add navigate hook initialization
+    const afterUserHook = '  const { user } = useAuth();';
+    const navigateHook = '  const { user } = useAuth();\n  const navigate = useNavigate();';
+    content = content.replace(afterUserHook, navigateHook);
+  }
+  
+  // Add check eligibility function
+  const fetchBookingsFunc = 'const fetchBookings = async () => {';
+  const checkEligibilityFunc = `
+  const checkEligibility = async (bookingId) => {
+    try {
+      console.log(\`Checking rating eligibility for booking \${bookingId}\`);
+      const response = await checkRatingEligibility(bookingId);
+
+      console.log('Eligibility check response:', response);
+
+      if (response.success) {
+        setRatingEligibility(prev => ({
+          ...prev,
+          [bookingId]: response.data
+        }));
+
+        console.log(\`Rating eligibility for booking \${bookingId}:\`, response.data);
+      } else {
+        console.warn(\`Error checking eligibility: \${response.error}\`);
+      }
+    } catch (err) {
+      console.error(\`Error checking rating eligibility for booking \${bookingId}:\`, err);
+    }
+  };
+
+  const fetchBookings = async () => {`;
+  content = content.replace(fetchBookingsFunc, checkEligibilityFunc);
+
+  // Add eligibility check after fetching bookings
+  const afterFetchBookings = `
+      console.log(\`Found \${hostBookings.length} cars for host \${userId}\`);
+      setBookings(hostBookings);
+      setError(null);`;
+  
+  const checkEligibilityAfterFetch = `
+      console.log(\`Found \${hostBookings.length} cars for host \${userId}\`);
+      setBookings(hostBookings);
+      
+      // Check rating eligibility for completed bookings
+      const completedBookings = hostBookings.filter(booking => booking.status === 'completed');
+      console.log('Completed bookings found:', completedBookings.length);
+      
+      for (const booking of completedBookings) {
+        await checkEligibility(booking.id);
+      }
+      
+      setError(null);`;
+  
+  content = content.replace(afterFetchBookings, checkEligibilityAfterFetch);
+
+  // Add handle rate booking function
+  const handleRefreshFunc = '  const handleRefresh = () => {';
+  const handleRateFunc = `
+  const handleRateBooking = (bookingId) => {
+    // Navigate to the review page for this booking
+    navigate(\`/review/\${bookingId}\`);
+  };
+
+  const handleRefresh = () => {`;
+  content = content.replace(handleRefreshFunc, handleRateFunc);
+
+  // Add rating button to the booking card UI
+  const actionButtons = `                  {/* Action buttons based on role and booking status */}
+                  <div className="mt-4 flex space-x-3">`;
+                  
+  const actionButtonsWithRating = `                  {/* Action buttons based on role and booking status */}
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {/* Rating button for completed bookings */}
+                    {booking.status === 'completed' && 
+                     ratingEligibility[booking.id]?.eligible === true && (
+                      <button
+                        onClick={() => handleRateBooking(booking.id)}
+                        className="bg-yellow-500 text-white py-1 px-3 rounded-full text-sm font-medium hover:bg-yellow-600 transition"
+                      >
+                        Rate Renter
+                      </button>
+                    )}
+                    
+                    {/* Show if already rated */}
+                    {booking.status === 'completed' && 
+                     ratingEligibility[booking.id]?.hasRated === true && (
+                      <span className="inline-flex items-center bg-green-100 text-green-800 py-1 px-3 rounded-full text-sm font-medium">
+                        <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        Rated
+                      </span>
+                    )}`;
+  
+  content = content.replace(actionButtons, actionButtonsWithRating);
+
+  // Write the updated content back to the file
+  fs.writeFileSync(bookingRequestsPath, content);
+  console.log('BookingRequests.jsx updated successfully');
+} else {
+  console.log('BookingRequests.jsx file not found');
+}
+EOFUPDATEREQUEST
+
+  node update-booking-requests.js
+  rm update-booking-requests.js
+else
+  echo "BookingRequests.jsx not found, skipping update"
+fi
+
+# 4. Update App.jsx to include the Review route
+echo "Backing up App.jsx..."
+cp frontend/src/App.jsx "$BACKUP_DIR/App.jsx.bak"
+
+echo "Updating App.jsx..."
+# Create a temporary update script
+cat > temp-update-app.js << 'EOFUPDATEAPP'
+const fs = require('fs');
+const path = require('path');
+
+// Path to the App.jsx file
+const appPath = path.join(__dirname, 'frontend/src/App.jsx');
+
+// Read the file
+let content = fs.readFileSync(appPath, 'utf8');
+
+// Add the Review import if it doesn't exist
+if (!content.includes('import Review from')) {
+  const importStatement = `import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import { ChatProvider } from './context/ChatContext';`;
+
+  const updatedImportStatement = `import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import { ChatProvider } from './context/ChatContext';
+import Review from './pages/Review';`;
+
+  content = content.replace(importStatement, updatedImportStatement);
+}
+
+// Add the Review route if it doesn't exist
+if (!content.includes('/review/:bookingId')) {
+  // Find a good place to insert it - before the NotFound route
+  const routeInsertionPoint = `<Route path="/profile/:userId" element={<UserProfile />} />
+              <Route path="*" element={<NotFound />} />`;
+
+  const updatedRoutes = `<Route path="/profile/:userId" element={<UserProfile />} />
+              <Route path="/review/:bookingId" element={<PrivateRoute element={<Review />} />} />
+              <Route path="*" element={<NotFound />} />`;
+
+  content = content.replace(routeInsertionPoint, updatedRoutes);
+}
+
+// Write the updated content back to the file
+fs.writeFileSync(appPath, content);
+
+console.log('App.jsx updated successfully');
+EOFUPDATEAPP
+
+# Run the update script
+node temp-update-app.js
+rm temp-update-app.js
+
+# 5. Ensure ratings API methods are properly implemented
+echo "Updating ratings API..."
+cat > frontend/src/api/ratings.js << 'EOFRATINGAPI'
+import axios from '../utils/axiosConfig';
+
+// Create a new rating
+export const createRating = async (ratingData) => {
+  try {
+    const response = await axios.post('/api/ratings', ratingData);
+    return { success: true, data: response.data };
+  } catch (error) {
+    console.error('Error creating rating:', error);
+    return {
+      success: false,
+      error: error.response?.data?.message || 'Error creating rating'
+    };
+  }
+};
+
+// Check if user can rate a booking
+export const checkRatingEligibility = async (bookingId) => {
+  try {
+    const response = await axios.get(`/api/ratings/check/${bookingId}`);
+    return { success: true, data: response.data };
+  } catch (error) {
+    console.error('Error checking rating eligibility:', error);
+    return {
+      success: false,
+      error: error.response?.data?.message || 'Error checking rating eligibility'
+    };
+  }
+};
+
+// Get ratings for a car
+export const getCarRatings = async (carId) => {
+  try {
+    const response = await axios.get(`/api/ratings/car/${carId}`);
+    return { success: true, data: response.data };
+  } catch (error) {
+    console.error('Error getting car ratings:', error);
+    return {
+      success: false,
+      error: error.response?.data?.message || 'Error getting car ratings'
+    };
+  }
+};
+
+// Get ratings for a user
+export const getUserRatings = async (userId) => {
+  try {
+    const response = await axios.get(`/api/ratings/user/${userId}`);
+    return { success: true, data: response.data };
+  } catch (error) {
+    console.error('Error getting user ratings:', error);
+    return {
+      success: false,
+      error: error.response?.data?.message || 'Error getting user ratings'
+    };
+  }
+};
+EOFRATINGAPI
+
+echo "✅ Rating system fix completed successfully!"
+echo "Now you can start your frontend application with 'cd frontend && npm start'"
+echo "When a booking is completed, hosts will now be able to rate renters, and vice versa."
+
+AFFECTED FILES (BASED ON REFERENCES):
+------------------------------------
+fs
+path
+fs
+path
+
+RECOMMENDATION:
+----------------
+This fix script should be manually integrated into the main codebase.
+After integration, the fix script can be deleted.

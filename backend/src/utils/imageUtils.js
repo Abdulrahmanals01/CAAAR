@@ -61,7 +61,41 @@ const processImagePath = (imagePath) => {
   return processedPath.replace(/\/\//g, '/');
 };
 
+/**
+ * Validate an uploaded image file
+ * @param {object} file - The multer file object
+ * @returns {object} - Validation result with valid flag and error message
+ */
+const validateImage = (file) => {
+  // Check if file exists
+  if (!file) {
+    return { valid: false, error: 'No file uploaded' };
+  }
+
+  // Check mimetype
+  const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/jpg'];
+  if (!allowedMimeTypes.includes(file.mimetype)) {
+    return { 
+      valid: false, 
+      error: `Invalid file type. Only ${allowedMimeTypes.join(', ')} are allowed` 
+    };
+  }
+
+  // Check file extension
+  const ext = file.originalname.split('.').pop().toLowerCase();
+  const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif'];
+  if (!allowedExtensions.includes(ext)) {
+    return { 
+      valid: false, 
+      error: `Invalid file extension. Only ${allowedExtensions.join(', ')} are allowed` 
+    };
+  }
+
+  return { valid: true };
+};
+
 module.exports = {
   getImageUrl,
-  processImagePath
+  processImagePath,
+  validateImage
 };

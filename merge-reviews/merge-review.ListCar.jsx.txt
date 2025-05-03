@@ -1,0 +1,16 @@
+=== MERGE REVIEW FOR: ./frontend/src/pages/ListCar.jsx.bak ===
+Compared with: ./frontend/src/pages/ListCar.jsx
+Generated on: Sat May  3 18:19:31 +03 2025
+====================================
+
+DIFFERENCES (UNIQUE CONTENT IN BACKUP FILE):
+-----------------------------------
++import React, { useState, useEffect } from 'react';
++import axios from 'axios';
++import { useContext } from 'react';
++import { AuthContext } from '../context/AuthContext';
++
++
++
++
++

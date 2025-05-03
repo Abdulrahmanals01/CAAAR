@@ -1,0 +1,8 @@
+=== MERGE REVIEW FOR: ./frontend/src/pages/BookingHistory.jsx.bak ===
+Compared with: ./frontend/src/pages/BookingHistory.jsx
+Generated on: Sat May  3 18:19:30 +03 2025
+====================================
+
+DIFFERENCES (UNIQUE CONTENT IN BACKUP FILE):
+-----------------------------------
+No unique content found.

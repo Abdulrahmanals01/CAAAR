@@ -151,7 +151,7 @@ const SearchResults = () => {
           {viewMode === 'map' ? (
             <div className="bg-white p-4 rounded-lg shadow-md">
               <h2 className="text-lg font-semibold mb-4">Car Locations</h2>
-              <SearchMapView cars={cars} />
+              <SearchMapView cars={cars} searchLocation={filters.location} />
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-6">

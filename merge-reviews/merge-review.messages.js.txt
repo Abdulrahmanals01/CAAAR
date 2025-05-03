@@ -1,0 +1,12 @@
+=== MERGE REVIEW FOR: ./frontend/src/api/messages.js.backup ===
+Compared with: ./frontend/src/api/messages.js
+Generated on: Sat May  3 18:19:29 +03 2025
+====================================
+
+DIFFERENCES (UNIQUE CONTENT IN BACKUP FILE):
+-----------------------------------
++const API_URL = process.env.REACT_APP_API_URL;
++// Mark all messages in a conversation as read
++export const markConversationAsRead = async (conversationId) => {
++// Get all conversations
++export const getAllConversations = async () => {

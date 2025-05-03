@@ -1,0 +1,10 @@
+=== MERGE REVIEW FOR: ./backend/src/scheduleTasks.js.bak ===
+Compared with: ./backend/src/scheduleTasks.js
+Generated on: Sat May  3 18:19:28 +03 2025
+====================================
+
+DIFFERENCES (UNIQUE CONTENT IN BACKUP FILE):
+-----------------------------------
++const autoCompleteExpiredBookings = require('./autoCompleteBookings');
++const rejectExpiredBookings = require('../autoRejectExpiredBookings');
++// Run auto-completion check every hour

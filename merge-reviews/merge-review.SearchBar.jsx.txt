@@ -1,0 +1,8 @@
+=== MERGE REVIEW FOR: ./frontend/src/components/SearchBar.jsx.backup ===
+Compared with: ./frontend/src/components/SearchBar.jsx
+Generated on: Sat May  3 18:19:30 +03 2025
+====================================
+
+DIFFERENCES (UNIQUE CONTENT IN BACKUP FILE):
+-----------------------------------
+No unique content found.

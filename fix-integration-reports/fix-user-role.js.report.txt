@@ -1,0 +1,40 @@
+=== FIX SCRIPT ANALYSIS: ./backend/src/fix-user-role.js ===
+Generated on: Sat May  3 18:20:20 +03 2025
+=======================================
+
+CONTENT:
+---------
+const db = require('./config/database');
+
+async function fixUserRole(userId, correctRole) {
+  try {
+    const result = await db.query(
+      'UPDATE users SET role = $1 WHERE id = $2 RETURNING id, name, email, role',
+      [correctRole, userId]
+    );
+    
+    if (result.rows.length === 0) {
+      console.log('User not found');
+      return;
+    }
+    
+    console.log('Updated user role:', result.rows[0]);
+    console.log(`User ${userId} role set to ${correctRole}`);
+    process.exit(0);
+  } catch (err) {
+    console.error('Error updating role:', err);
+    process.exit(1);
+  }
+}
+
+// Set user 1 to host role
+fixUserRole(1, 'host');
+
+AFFECTED FILES (BASED ON REFERENCES):
+------------------------------------
+./config/database
+
+RECOMMENDATION:
+----------------
+This fix script should be manually integrated into the main codebase.
+After integration, the fix script can be deleted.

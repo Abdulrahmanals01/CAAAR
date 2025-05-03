@@ -1,0 +1,34 @@
+=== MERGE REVIEW FOR: ./backend/src/app.js.bak ===
+Compared with: ./backend/src/app.js
+Generated on: Sat May  3 18:19:26 +03 2025
+====================================
+
+DIFFERENCES (UNIQUE CONTENT IN BACKUP FILE):
+-----------------------------------
++const morgan = require('morgan');
++// Import routes
++const routes = require('./routes');
++
++// Security middleware
++app.use(helmet());
++// Enable CORS
++// Request logging
++app.use(morgan('dev'));
++
++// Body parser middleware
++// Serve static files from uploads directory
++// API routes
++app.use('/api', routes);
++// Health check endpoint
++app.get('/health', (req, res) => {
++// 404 handler
++app.use((req, res) => {
++// Set port and start server
++
++app.listen(PORT, () => {
++
++// Import user routes if not already imported
++const userRoutes = require('./routes/users');
++
++// Use user routes
++app.use('/api/users', userRoutes);

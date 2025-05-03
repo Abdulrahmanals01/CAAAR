@@ -226,45 +226,99 @@ exports.createCar = async (req, res) => {
       features
     } = req.body;
 
+    // Log incoming data for debugging
+    console.log('Creating car with data:', {
+      userId,
+      brand,
+      model,
+      year,
+      plate,
+      color,
+      mileage,
+      price_per_day,
+      location,
+      latitude,
+      longitude,
+      availability_start,
+      availability_end,
+      car_type,
+      features: typeof features,
+      file: req.file ? 'Present' : 'Missing'
+    });
+
     // Check if car with the same plate already exists
     const existingCar = await db.query('SELECT * FROM cars WHERE plate = $1', [plate]);
     if (existingCar.rows.length > 0) {
       return res.status(400).json({ message: 'A car with this plate number already exists' });
     }
 
+    // Verify image was uploaded (now required)
+    if (!req.file) {
+      return res.status(400).json({ message: 'Car image is required' });
+    }
+    
     // Prepare image path
-    let imagePath = null;
-    if (req.file) {
-      imagePath = req.file.path.replace('\\', '/');
-      // If the path contains the full path from the root, extract just the relative path
-      if (imagePath.includes('uploads/')) {
-        imagePath = imagePath.substring(imagePath.indexOf('uploads/'));
-      }
+    let imagePath = req.file.path.replace(/\\/g, '/'); // Replace all backslashes with forward slashes
+    console.log('Original image path:', req.file.path);
+    console.log('Normalized image path:', imagePath);
+    
+    // If the path contains the full path from the root, extract just the relative path
+    if (imagePath.includes('uploads/')) {
+      imagePath = imagePath.substring(imagePath.indexOf('uploads/'));
+      console.log('Extracted relative path:', imagePath);
+    }
+    
+    // Ensure the image path doesn't exceed VARCHAR(255) limit
+    if (imagePath.length > 250) {
+      // Truncate path to fit in column, preserving extension
+      const ext = path.extname(imagePath);
+      const basename = path.basename(imagePath, ext);
+      const truncatedName = basename.substring(0, 240 - ext.length); // Leave room for extension and uploads/
+      imagePath = `uploads/cars/${truncatedName}${ext}`;
+      console.log('Truncated image path to fit in column:', imagePath);
     }
 
-    // Parse features if provided - FIX: Handle correctly as JSONB array
+    // Parse features if provided
     let featuresArray = [];
     if (features) {
       try {
-        // Parse the features JSON string
-        const parsedFeatures = JSON.parse(features);
-        
-        if (Array.isArray(parsedFeatures)) {
-          featuresArray = parsedFeatures;
-        } else if (typeof parsedFeatures === 'object') {
-          // If it's an object with feature: boolean pairs, extract keys with true values
-          featuresArray = Object.keys(parsedFeatures).filter(key => parsedFeatures[key] === true);
-        } else if (typeof parsedFeatures === 'string') {
-          // If it's a single string, wrap it in an array
-          featuresArray = [parsedFeatures];
+        // Handle the case where features might already be an array
+        if (Array.isArray(features)) {
+          featuresArray = features;
+        } else {
+          // Try to parse as JSON string
+          const parsedFeatures = JSON.parse(features);
+          
+          if (Array.isArray(parsedFeatures)) {
+            featuresArray = parsedFeatures;
+          } else if (typeof parsedFeatures === 'object') {
+            // If it's an object with feature: boolean pairs, extract keys with true values
+            featuresArray = Object.keys(parsedFeatures).filter(key => parsedFeatures[key] === true);
+          } else if (typeof parsedFeatures === 'string') {
+            // If it's a single string, wrap it in an array
+            featuresArray = [parsedFeatures];
+          }
         }
       } catch (err) {
         console.error('Error parsing features:', err);
-        featuresArray = [];
+        // If parsing fails, try using it directly
+        if (typeof features === 'string') {
+          featuresArray = [features]; // Single feature as string
+        } else if (Array.isArray(features)) {
+          featuresArray = features; // Already an array
+        }
       }
     }
 
     console.log('Processed features:', featuresArray);
+    console.log('Features JSON:', JSON.stringify(featuresArray));
+
+    // Convert numeric values to their proper types
+    const parsedYear = parseInt(year, 10);
+    const parsedMileage = parseInt(mileage, 10);
+    const parsedPrice = parseFloat(price_per_day);
+    const parsedLatitude = latitude ? parseFloat(latitude) : null;
+    const parsedLongitude = longitude ? parseFloat(longitude) : null;
 
     // Insert car into database with JSONB for features
     const result = await db.query(
@@ -275,9 +329,23 @@ exports.createCar = async (req, res) => {
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17::jsonb)
       RETURNING *`,
       [
-        userId, brand, model, year, plate, color, mileage, price_per_day,
-        location, latitude || null, longitude || null, availability_start, availability_end,
-        imagePath, 'available', car_type || null, JSON.stringify(featuresArray)
+        userId, 
+        brand.substring(0, 50), 
+        model.substring(0, 50), 
+        parsedYear, 
+        plate.substring(0, 20), 
+        color.substring(0, 30), 
+        parsedMileage, 
+        parsedPrice,
+        location.substring(0, 100), 
+        parsedLatitude, 
+        parsedLongitude, 
+        availability_start, 
+        availability_end,
+        imagePath.substring(0, 255), 
+        'available', 
+        car_type ? car_type.substring(0, 20) : null, 
+        JSON.stringify(featuresArray)
       ]
     );
 

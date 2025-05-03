@@ -1,0 +1,10 @@
+=== MERGE REVIEW FOR: ./frontend/src/utils/axiosConfig.js.bak ===
+Compared with: ./frontend/src/utils/axiosConfig.js
+Generated on: Sat May  3 18:19:32 +03 2025
+====================================
+
+DIFFERENCES (UNIQUE CONTENT IN BACKUP FILE):
+-----------------------------------
++// Create an instance with default config
++// Add a request interceptor to add the auth token to every request
++// Add a response interceptor to handle common errors

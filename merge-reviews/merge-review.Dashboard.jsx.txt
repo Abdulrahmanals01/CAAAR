@@ -1,0 +1,9 @@
+=== MERGE REVIEW FOR: ./frontend/src/pages/Dashboard.jsx.bak ===
+Compared with: ./frontend/src/pages/Dashboard.jsx
+Generated on: Sat May  3 18:19:31 +03 2025
+====================================
+
+DIFFERENCES (UNIQUE CONTENT IN BACKUP FILE):
+-----------------------------------
++import { Link } from 'react-router-dom';
+No unique content found.

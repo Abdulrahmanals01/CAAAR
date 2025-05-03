@@ -68,11 +68,11 @@ function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/cars/:id" element={<CarDetails />} />
-              {/* Car search routes */}
+              {/* Car search routes - consolidate all to CarSearch component */}
               <Route path="/cars" element={<CarSearch />} />
               <Route path="/cars/search" element={<CarSearch />} />
               <Route path="/search" element={<CarSearch />} />
-              <Route path="/searchresults" element={<SearchResults />} />
+              <Route path="/searchresults" element={<CarSearch />} />
               {/* Dashboard routes with role protection */}
               <Route path="/dashboard" element={<Dashboard />} />
               <Route

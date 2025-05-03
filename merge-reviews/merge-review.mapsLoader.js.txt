@@ -1,0 +1,9 @@
+=== MERGE REVIEW FOR: ./frontend/src/utils/mapsLoader.js.bak ===
+Compared with: ./frontend/src/utils/mapsLoader.js
+Generated on: Sat May  3 18:19:32 +03 2025
+====================================
+
+DIFFERENCES (UNIQUE CONTENT IN BACKUP FILE):
+-----------------------------------
++// Export both the loader and error handler
++export default {

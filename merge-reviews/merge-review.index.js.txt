@@ -1,0 +1,13 @@
+=== MERGE REVIEW FOR: ./backend/src/routes/index.js.bak ===
+Compared with: ./backend/src/routes/index.js
+Generated on: Sat May  3 18:19:28 +03 2025
+====================================
+
+DIFFERENCES (UNIQUE CONTENT IN BACKUP FILE):
+-----------------------------------
++// Import routes
++// Use routes
++
++// Health check route
++router.get('/health', (req, res) => {
++});

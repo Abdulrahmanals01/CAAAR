@@ -32,7 +32,7 @@ const SearchBar = () => {
       endTime: searchParams.endTime
     }).toString();
 
-    // Navigate to cars page with query parameters (changed from /cars/search to /cars)
+    // Navigate to the main car search page with query parameters
     navigate(`/cars?${queryString}`);
   };
 

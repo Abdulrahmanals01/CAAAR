@@ -14,7 +14,7 @@ const defaultCenter = {
   lng: 46.6753
 };
 
-const SearchMapView = ({ cars = [] }) => {
+const SearchMapView = ({ cars = [], searchLocation }) => {
   const [map, setMap] = useState(null);
   const [selectedCar, setSelectedCar] = useState(null);
   const [mapError, setMapError] = useState(false);
@@ -30,6 +30,33 @@ const SearchMapView = ({ cars = [] }) => {
   const onLoad = useCallback(function callback(map) {
     try {
       setMap(map);
+      
+      // Center map on search location if provided
+      if (searchLocation) {
+        const geocoder = new window.google.maps.Geocoder();
+        geocoder.geocode({ address: searchLocation + ', Saudi Arabia' }, (results, status) => {
+          if (status === 'OK' && results && results.length > 0) {
+            const location = results[0].geometry.location;
+            map.setCenter(location);
+            map.setZoom(12);
+            
+            // Add a marker for the search location
+            new window.google.maps.Marker({
+              position: location,
+              map: map,
+              title: results[0].formatted_address || searchLocation,
+              icon: {
+                path: window.google.maps.SymbolPath.CIRCLE,
+                scale: 10,
+                fillColor: '#4285F4',
+                fillOpacity: 0.3,
+                strokeColor: '#4285F4',
+                strokeWeight: 2
+              }
+            });
+          }
+        });
+      }
       
       // If we have cars with locations, fit the map to show all markers
       if (cars.length > 0 && cars.some(car => car.latitude && car.longitude)) {
@@ -48,15 +75,15 @@ const SearchMapView = ({ cars = [] }) => {
           }
         });
         
-        // Only adjust if we have valid bounds
-        if (!bounds.isEmpty()) {
+        // Only adjust if we have valid bounds and no search location
+        if (!bounds.isEmpty() && !searchLocation) {
           map.fitBounds(bounds);
         }
       }
     } catch (error) {
       console.error("Error in map onLoad:", error);
     }
-  }, [cars]);
+  }, [cars, searchLocation]);
 
   const onUnmount = useCallback(function callback() {
     setMap(null);

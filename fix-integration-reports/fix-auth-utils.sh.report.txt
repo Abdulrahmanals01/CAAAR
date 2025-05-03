@@ -1,0 +1,87 @@
+=== FIX SCRIPT ANALYSIS: ./fix-auth-utils.sh ===
+Generated on: Sat May  3 18:20:20 +03 2025
+=======================================
+
+CONTENT:
+---------
+#!/bin/bash
+
+echo "Fixing frontend auth utilities..."
+
+# Create backup
+cp frontend/src/utils/auth.js frontend/src/utils/auth.js.bak
+
+# Add the missing functions to auth.js
+cat >> frontend/src/utils/auth.js << 'EOFJS'
+
+// Get token from localStorage - needed by Inbox.jsx
+export const getToken = () => {
+  return localStorage.getItem('token');
+};
+
+// Initialize auth headers for axios - needed by index.jsx
+export const initAuthHeaders = () => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  } else {
+    delete axios.defaults.headers.common['Authorization'];
+  }
+};
+EOFJS
+
+echo "✅ Added missing auth utility functions"
+
+# Fix the import in index.jsx
+echo "Updating axios import in index.jsx..."
+cp frontend/src/index.jsx frontend/src/index.jsx.bak
+sed -i '5i import axios from "./utils/axiosConfig";' frontend/src/index.jsx
+
+# Fix mapsLoader.js ESLint warning
+echo "Fixing mapsLoader.js ESLint warning..."
+cp frontend/src/utils/mapsLoader.js frontend/src/utils/mapsLoader.js.bak
+cat > frontend/src/utils/mapsLoader.js.new << 'EOFJS'
+import { Loader } from '@googlemaps/js-api-loader';
+
+// Create a singleton loader instance with complete configuration
+const loader = new Loader({
+  apiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY,
+  version: 'weekly',
+  libraries: ['places'],
+  language: 'en',
+  region: 'SA', // Set to Saudi Arabia
+  authReferrerPolicy: 'origin'
+});
+
+// Simple error handler for maps loading failures
+const handleMapsError = (error) => {
+  console.error('Google Maps loading error:', error);
+  return {
+    error: true,
+    message: 'Failed to load Google Maps. Please check your internet connection and try again.'
+  };
+};
+
+// Create a named export object
+const mapsService = {
+  load: () => loader.load().catch(handleMapsError),
+  handleMapsError
+};
+
+// Export the service
+export default mapsService;
+EOFJS
+
+mv frontend/src/utils/mapsLoader.js.new frontend/src/utils/mapsLoader.js
+
+echo "✅ Fixed frontend issues"
+echo ""
+echo "All fixes have been applied. Please restart both the backend and frontend servers."
+
+AFFECTED FILES (BASED ON REFERENCES):
+------------------------------------
+
+RECOMMENDATION:
+----------------
+This fix script should be manually integrated into the main codebase.
+After integration, the fix script can be deleted.

@@ -1,0 +1,9 @@
+=== MERGE REVIEW FOR: ./backend/src/routes/bookingRoutes.js.bak ===
+Compared with: ./backend/src/routes/bookingRoutes.js
+Generated on: Sat May  3 18:19:28 +03 2025
+====================================
+
+DIFFERENCES (UNIQUE CONTENT IN BACKUP FILE):
+-----------------------------------
++router.get('/availability/:carId', bookingController.getCarAvailability);
+No unique content found.

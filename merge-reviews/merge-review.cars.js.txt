@@ -1,0 +1,10 @@
+=== MERGE REVIEW FOR: ./frontend/src/api/cars.js.bak ===
+Compared with: ./frontend/src/api/cars.js
+Generated on: Sat May  3 18:19:29 +03 2025
+====================================
+
+DIFFERENCES (UNIQUE CONTENT IN BACKUP FILE):
+-----------------------------------
++import axios from 'axios';
++
++const API_URL = process.env.REACT_APP_API_URL;

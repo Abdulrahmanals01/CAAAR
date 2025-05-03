@@ -1,0 +1,16 @@
+=== MERGE REVIEW FOR: ./frontend/src/api/bookings.js.backup-1745190681 ===
+Compared with: ./frontend/src/api/bookings.js
+Generated on: Sat May  3 18:19:28 +03 2025
+====================================
+
+DIFFERENCES (UNIQUE CONTENT IN BACKUP FILE):
+-----------------------------------
++import axios from 'axios';
++
++const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
++
++
++
++
++
++

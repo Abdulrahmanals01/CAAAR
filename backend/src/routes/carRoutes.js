@@ -50,6 +50,7 @@ router.post(
     body('location').notEmpty().withMessage('Location is required'),
     body('availability_start').isDate().withMessage('Valid availability start date is required'),
     body('availability_end').isDate().withMessage('Valid availability end date is required')
+    // Note: Image validation happens in the controller after multer processes the file
   ],
   carController.createCar
 );

@@ -1,0 +1,10 @@
+Updating imports: controllers/bookingController.fix-availability -> controllers/bookingController.fixAvailability
+Updating imports: controllers/debug-image-functions -> controllers/debugImageFunctions
+Updating imports: controllers/format-image-url -> controllers/formatImageUrl
+Updating imports: db-update-admin-tracking -> dbUpdateAdminTracking
+Updating imports: db-update-features -> dbUpdateFeatures
+Updating imports: db-update -> dbUpdate
+Updating imports: debug-route -> debugRoute
+Updating imports: debug-uploads -> debugUploads
+Updating imports: fix-image-paths -> fixImagePaths
+Updating imports: fix-user-role -> fixUserRole

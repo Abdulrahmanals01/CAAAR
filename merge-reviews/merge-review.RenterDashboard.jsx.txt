@@ -1,0 +1,9 @@
+=== MERGE REVIEW FOR: ./frontend/src/pages/dashboard/RenterDashboard.jsx.backup-1745740372 ===
+Compared with: ./frontend/src/pages/dashboard/RenterDashboard.jsx
+Generated on: Sat May  3 18:19:31 +03 2025
+====================================
+
+DIFFERENCES (UNIQUE CONTENT IN BACKUP FILE):
+-----------------------------------
++
++

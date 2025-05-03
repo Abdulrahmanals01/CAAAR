@@ -1,0 +1,21 @@
+=== MERGE REVIEW FOR: ./backend/src/routes/authRoutes.js.backup ===
+Compared with: ./backend/src/routes/authRoutes.js
+Generated on: Sat May  3 18:19:28 +03 2025
+====================================
+
+DIFFERENCES (UNIQUE CONTENT IN BACKUP FILE):
+-----------------------------------
++const { body } = require('express-validator');
++const authController = require('../controllers/authController');
++const authMiddleware = require('../middleware/auth');
++// Register user
++router.post(
++);
++// Login user
++router.post(
++);
++// Get current user
++router.get('/me', authMiddleware.authenticate, authController.getCurrentUser);
++
++// Add the route for switching roles
++router.post('/switch-role', auth.authenticate, authController.switchRole);

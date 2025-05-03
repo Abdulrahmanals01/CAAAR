@@ -1,0 +1,9 @@
+=== MERGE REVIEW FOR: ./frontend/src/index.jsx.bak ===
+Compared with: ./frontend/src/index.jsx
+Generated on: Sat May  3 18:19:30 +03 2025
+====================================
+
+DIFFERENCES (UNIQUE CONTENT IN BACKUP FILE):
+-----------------------------------
++import axios from 'axios';
+No unique content found.

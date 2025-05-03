@@ -1,0 +1,11 @@
+=== MERGE REVIEW FOR: ./backend/src/utils/imageUtils.js.bak ===
+Compared with: ./backend/src/utils/imageUtils.js
+Generated on: Sat May  3 18:19:28 +03 2025
+====================================
+
+DIFFERENCES (UNIQUE CONTENT IN BACKUP FILE):
+-----------------------------------
++const path = require('path');
++const formatImageUrl = (imagePath, type = 'cars') => {
++
++const normalizeImagePath = (imagePath, type = 'cars') => {

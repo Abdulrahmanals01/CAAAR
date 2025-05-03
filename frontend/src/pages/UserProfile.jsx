@@ -353,7 +353,7 @@ const UserProfile = () => {
                             <div className="flex items-center mb-2">
                               <StarRating rating={car.average_rating || 0} size="sm" />
                               <span className="ml-1 text-sm text-gray-600">
-                                ({car.average_rating ? car.average_rating.toFixed(1) : '0'})
+                                ({car.average_rating && typeof car.average_rating === 'number' ? car.average_rating.toFixed(1) : '0'})
                               </span>
                             </div>
                             <p className="text-gray-700 mb-2">
