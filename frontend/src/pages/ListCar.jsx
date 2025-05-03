@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { createCar } from '../api/cars';
+import LocationPicker from '../components/cars/LocationPicker';
 
 const ListCar = () => {
   const navigate = useNavigate();
@@ -14,7 +15,10 @@ const ListCar = () => {
     mileage: '',
     price_per_day: '',
     location: '',
+    latitude: '',
+    longitude: '',
     description: '',
+    car_type: '',
     availability_start: new Date().toISOString().split('T')[0],
     availability_end: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0]
   });
@@ -50,7 +54,7 @@ const ListCar = () => {
     if (e.target.files.length > 0) {
       const selectedImage = e.target.files[0];
       setImage(selectedImage);
-      
+
       // Create image preview
       const reader = new FileReader();
       reader.onload = () => {
@@ -60,47 +64,45 @@ const ListCar = () => {
     }
   };
 
+  // Memoize the location select handler to prevent unnecessary re-renders
+  const handleLocationSelect = useCallback((locationData) => {
+    setFormData(prev => ({
+      ...prev,
+      latitude: locationData.lat,
+      longitude: locationData.lng,
+      // Update address field if provided
+      location: locationData.address || prev.location
+    }));
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
+    // Validation
+    if (!formData.latitude || !formData.longitude) {
+      setError('Please select a location on the map');
+      setLoading(false);
+      return;
+    }
+
     try {
-      const token = localStorage.getItem('token');
-
-      if (!token) {
-        setError('Authentication required');
-        setLoading(false);
-        return;
-      }
-
-      // Add features to description
-      const featuresText = Object.entries(carFeatures)
+      // Get selected features as an array
+      const featuresArray = Object.entries(carFeatures)
         .filter(([_, isEnabled]) => isEnabled)
-        .map(([feature, _]) => {
-          // Convert camelCase to readable text
-          return feature
-            .replace(/([A-Z])/g, ' $1')
-            .replace(/^./, str => str.toUpperCase());
-        });
-      
-      let enhancedDescription = formData.description;
-      
-      if (featuresText.length > 0) {
-        enhancedDescription += `\n\nFeatures: ${featuresText.join(', ')}`;
-      }
+        .map(([feature, _]) => feature);
 
       // Create FormData object for file upload
       const carData = new FormData();
 
       // Add form fields to FormData
       Object.keys(formData).forEach(key => {
-        if (key === 'description') {
-          carData.append(key, enhancedDescription);
-        } else {
-          carData.append(key, formData[key]);
-        }
+        carData.append(key, formData[key]);
       });
+
+      // Add features as JSON string
+      carData.append('features', JSON.stringify(featuresArray));
 
       // Add image if provided
       if (image) {
@@ -108,50 +110,47 @@ const ListCar = () => {
       }
 
       // Make API request to create car listing
-      const response = await axios.post(
-        'http://localhost:5000/api/cars',
-        carData,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'multipart/form-data'
-          }
-        }
-      );
+      const response = await createCar(carData);
 
-      console.log('Car listing created:', response.data);
-      setSuccess(true);
+      if (response.success) {
+        console.log('Car listing created:', response.data);
+        setSuccess(true);
 
-      // Reset form
-      setFormData({
-        brand: '',
-        model: '',
-        year: new Date().getFullYear(),
-        color: '',
-        plate: '',
-        mileage: '',
-        price_per_day: '',
-        location: '',
-        description: '',
-        availability_start: new Date().toISOString().split('T')[0],
-        availability_end: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0]
-      });
-      setCarFeatures({
-        airConditioning: false,
-        bluetooth: false,
-        gps: false,
-        usbPort: false,
-        heatedSeats: false,
-        sunroof: false,
-        petFriendly: false,
-        childSeat: false
-      });
-      setImage(null);
-      setImagePreview(null);
+        // Reset form
+        setFormData({
+          brand: '',
+          model: '',
+          year: new Date().getFullYear(),
+          color: '',
+          plate: '',
+          mileage: '',
+          price_per_day: '',
+          location: '',
+          latitude: '',
+          longitude: '',
+          description: '',
+          car_type: '',
+          availability_start: new Date().toISOString().split('T')[0],
+          availability_end: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0]
+        });
+        setCarFeatures({
+          airConditioning: false,
+          bluetooth: false,
+          gps: false,
+          usbPort: false,
+          heatedSeats: false,
+          sunroof: false,
+          petFriendly: false,
+          childSeat: false
+        });
+        setImage(null);
+        setImagePreview(null);
 
-      // Redirect after success
-      setTimeout(() => navigate('/dashboard'), 2000);
-
+        // Redirect after success
+        setTimeout(() => navigate('/dashboard'), 2000);
+      } else {
+        setError(response.error || 'Failed to create car listing');
+      }
     } catch (err) {
       console.error('Error listing car:', err);
       setError(err.response?.data?.message || 'Failed to create car listing');
@@ -206,6 +205,26 @@ const ListCar = () => {
                   className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Camry, Civic, X5..."
                 />
+              </div>
+
+              <div>
+                <label className="block text-gray-700 font-semibold mb-2">Car Type</label>
+                <select
+                  name="car_type"
+                  value={formData.car_type}
+                  onChange={handleChange}
+                  required
+                  className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">Select car type</option>
+                  <option value="sedan">Sedan</option>
+                  <option value="suv">SUV</option>
+                  <option value="truck">Truck</option>
+                  <option value="sports">Sports</option>
+                  <option value="luxury">Luxury</option>
+                  <option value="compact">Compact</option>
+                  <option value="convertible">Convertible</option>
+                </select>
               </div>
 
               <div>
@@ -265,7 +284,7 @@ const ListCar = () => {
           {/* Price & Location Section */}
           <div>
             <h2 className="text-xl font-semibold mb-4">Price & Location</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-6">
               <div>
                 <label className="block text-gray-700 font-semibold mb-2">Price per day (SAR)</label>
                 <div className="relative">
@@ -286,7 +305,7 @@ const ListCar = () => {
               </div>
 
               <div>
-                <label className="block text-gray-700 font-semibold mb-2">Location</label>
+                <label className="block text-gray-700 font-semibold mb-2">Address</label>
                 <input
                   type="text"
                   name="location"
@@ -296,10 +315,25 @@ const ListCar = () => {
                   placeholder="Riyadh, Jeddah, Dammam..."
                   className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
+                <p className="mt-1 text-sm text-gray-500">
+                  This address will be shown to renters. Use the map below to set the exact location.
+                </p>
+              </div>
+
+              {/* Map Location Picker */}
+              <div>
+                <label className="block text-gray-700 font-semibold mb-2">Select Location on Map</label>
+                <LocationPicker onLocationSelect={handleLocationSelect} />
+
+                {/* Hidden fields for lat/lng */}
+                <input type="hidden" name="latitude" value={formData.latitude} />
+                <input type="hidden" name="longitude" value={formData.longitude} />
               </div>
             </div>
           </div>
 
+          {/* Rest of the form remains the same... */}
+          
           {/* Availability Section */}
           <div>
             <h2 className="text-xl font-semibold mb-4">Availability</h2>
@@ -331,90 +365,22 @@ const ListCar = () => {
             </div>
           </div>
 
-          {/* Features Section - Similar to Turo */}
+          {/* Features Section */}
           <div>
             <h2 className="text-xl font-semibold mb-4">Features & Amenities</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <label className="flex items-center space-x-2 p-2 rounded hover:bg-gray-50">
-                <input
-                  type="checkbox"
-                  name="airConditioning"
-                  checked={carFeatures.airConditioning}
-                  onChange={handleFeatureChange}
-                  className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
-                />
-                <span>Air Conditioning</span>
-              </label>
-              <label className="flex items-center space-x-2 p-2 rounded hover:bg-gray-50">
-                <input
-                  type="checkbox"
-                  name="bluetooth"
-                  checked={carFeatures.bluetooth}
-                  onChange={handleFeatureChange}
-                  className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
-                />
-                <span>Bluetooth</span>
-              </label>
-              <label className="flex items-center space-x-2 p-2 rounded hover:bg-gray-50">
-                <input
-                  type="checkbox"
-                  name="gps"
-                  checked={carFeatures.gps}
-                  onChange={handleFeatureChange}
-                  className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
-                />
-                <span>GPS</span>
-              </label>
-              <label className="flex items-center space-x-2 p-2 rounded hover:bg-gray-50">
-                <input
-                  type="checkbox"
-                  name="usbPort"
-                  checked={carFeatures.usbPort}
-                  onChange={handleFeatureChange}
-                  className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
-                />
-                <span>USB Port</span>
-              </label>
-              <label className="flex items-center space-x-2 p-2 rounded hover:bg-gray-50">
-                <input
-                  type="checkbox"
-                  name="heatedSeats"
-                  checked={carFeatures.heatedSeats}
-                  onChange={handleFeatureChange}
-                  className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
-                />
-                <span>Heated Seats</span>
-              </label>
-              <label className="flex items-center space-x-2 p-2 rounded hover:bg-gray-50">
-                <input
-                  type="checkbox"
-                  name="sunroof"
-                  checked={carFeatures.sunroof}
-                  onChange={handleFeatureChange}
-                  className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
-                />
-                <span>Sunroof</span>
-              </label>
-              <label className="flex items-center space-x-2 p-2 rounded hover:bg-gray-50">
-                <input
-                  type="checkbox"
-                  name="petFriendly"
-                  checked={carFeatures.petFriendly}
-                  onChange={handleFeatureChange}
-                  className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
-                />
-                <span>Pet Friendly</span>
-              </label>
-              <label className="flex items-center space-x-2 p-2 rounded hover:bg-gray-50">
-                <input
-                  type="checkbox"
-                  name="childSeat"
-                  checked={carFeatures.childSeat}
-                  onChange={handleFeatureChange}
-                  className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
-                />
-                <span>Child Seat</span>
-              </label>
+              {Object.entries(carFeatures).map(([feature, checked]) => (
+                <label key={feature} className="flex items-center space-x-2 p-2 rounded hover:bg-gray-50">
+                  <input
+                    type="checkbox"
+                    name={feature}
+                    checked={checked}
+                    onChange={handleFeatureChange}
+                    className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
+                  />
+                  <span>{feature.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</span>
+                </label>
+              ))}
             </div>
           </div>
 
@@ -442,14 +408,14 @@ const ListCar = () => {
                 accept="image/*"
                 className="hidden"
               />
-              <label 
+              <label
                 htmlFor="car-image"
                 className="cursor-pointer block w-full"
               >
                 {!imagePreview ? (
                   <>
                     <div className="mx-auto w-12 h-12 text-gray-400">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">       
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
                     </div>
@@ -462,9 +428,9 @@ const ListCar = () => {
                   </>
                 ) : (
                   <div className="relative">
-                    <img 
-                      src={imagePreview} 
-                      alt="Car preview" 
+                    <img
+                      src={imagePreview}
+                      alt="Car preview"
                       className="max-h-64 mx-auto rounded"
                     />
                     <p className="mt-2 text-sm text-gray-500">Click to change the image</p>

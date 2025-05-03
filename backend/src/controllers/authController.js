@@ -14,8 +14,14 @@ exports.register = async (req, res) => {
   console.log('Request body:', req.body);
   console.log('File:', req.file);
 
-  const { name, email, password, role, phone, id_number } = req.body;
-  const licenseImage = req.file ? req.file.path : null;
+  const { name, email, password, role, phone, id_number, gender, date_of_birth } = req.body;
+  
+  // Check if license image was uploaded
+  if (!req.file) {
+    return res.status(400).json({ message: "Driver's License image is required" });
+  }
+  
+  const licenseImage = req.file.path;
 
   try {
     // Check if user already exists
@@ -23,15 +29,32 @@ exports.register = async (req, res) => {
     if (userExists.rows.length > 0) {
       return res.status(400).json({ message: 'User already exists with this email' });
     }
+    
+    // Verify age is 18 or older
+    const birthDate = new Date(date_of_birth);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    
+    if (age < 18) {
+      return res.status(400).json({ message: 'You must be 18 years or older to register' });
+    }
 
     // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Insert new user
+    // Insert new user with additional fields
     const newUser = await db.query(
-      'INSERT INTO users (name, email, password, role, phone, id_number, license_image) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, name, email, role',
-      [name, email, hashedPassword, role, phone, id_number, licenseImage]
+      `INSERT INTO users
+       (name, email, password, role, phone, id_number, license_image, gender, date_of_birth)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING id, name, email, role`,
+      [name, email, hashedPassword, role, phone, id_number, licenseImage, gender || null, date_of_birth || null]
     );
 
     // Generate JWT token
@@ -80,7 +103,7 @@ exports.login = async (req, res) => {
       'SELECT id, name, email, password, role, status, freeze_until, freeze_reason, ban_reason FROM users WHERE email = $1', 
       [email]
     );
-    
+
     if (result.rows.length === 0) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
@@ -106,7 +129,7 @@ exports.login = async (req, res) => {
     if (user.status === 'frozen') {
       const freezeUntil = new Date(user.freeze_until);
       const now = new Date();
-      
+
       // If freeze period has expired, automatically unfreeze the user
       if (freezeUntil < now) {
         await db.query(
@@ -159,7 +182,7 @@ exports.login = async (req, res) => {
 exports.getCurrentUser = async (req, res) => {
   try {
     const user = await db.query(
-      'SELECT id, name, email, role, phone, id_number, license_image, created_at, status, freeze_until, freeze_reason, ban_reason FROM users WHERE id = $1',
+      'SELECT id, name, email, role, phone, id_number, license_image, gender, date_of_birth, created_at, status, freeze_until, freeze_reason, ban_reason FROM users WHERE id = $1',
       [req.user.id]
     );
 

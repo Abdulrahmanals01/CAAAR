@@ -1,0 +1,293 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
+
+const MapView = ({ cars, onCarSelect, searchLocation }) => {
+  const [map, setMap] = useState(null);
+  const [markers, setMarkers] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const mapRef = useRef(null);
+  const infoWindowRef = useRef(null);
+
+  // Default center (Riyadh, Saudi Arabia)
+  const defaultCenter = { lat: 24.7136, lng: 46.6753 };
+  
+  // Create a dummy list to test marker placement
+  const dummyCars = [
+    { 
+      id: 1, 
+      latitude: 24.774265, 
+      longitude: 46.738586, 
+      brand: "Toyota", 
+      model: "Camry", 
+      year: 2022,
+      price_per_day: 200,
+      location: "Riyadh, Saudi Arabia" 
+    },
+    { 
+      id: 2, 
+      latitude: 24.713552, 
+      longitude: 46.675296, 
+      brand: "BMW", 
+      model: "X5", 
+      year: 2023,
+      price_per_day: 500,
+      location: "Riyadh, Saudi Arabia" 
+    },
+    { 
+      id: 3, 
+      latitude: 24.7286, 
+      longitude: 46.7122, 
+      brand: "Mercedes", 
+      model: "S-Class", 
+      year: 2023,
+      price_per_day: 800,
+      location: "Riyadh, Saudi Arabia" 
+    }
+  ];
+
+  // Load Google Maps script
+  useEffect(() => {
+    // Check if Google Maps is already loaded
+    if (window.google && window.google.maps) {
+      initializeMap();
+      return;
+    }
+
+    // Check if script is already being loaded
+    const existingScript = document.getElementById('google-maps-script');
+    if (existingScript) {
+      // Wait for script to load
+      existingScript.addEventListener('load', initializeMap);
+      return;
+    }
+
+    // Create and load the script
+    const apiKey = process.env.REACT_APP_GOOGLE_MAPS_API_KEY;
+    const script = document.createElement('script');
+    script.id = 'google-maps-script';
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+    script.async = true;
+    script.defer = true;
+    
+    script.addEventListener('load', initializeMap);
+    script.addEventListener('error', () => {
+      setError('Failed to load Google Maps API');
+      setIsLoading(false);
+    });
+
+    document.head.appendChild(script);
+
+    return () => {
+      // Clean up event listener if component unmounts during load
+      script.removeEventListener('load', initializeMap);
+    };
+  }, []);
+
+  // Create and initialize the map
+  const initializeMap = () => {
+    if (!mapRef.current) return;
+
+    try {
+      console.log('Initializing map...');
+      
+      // Create map instance
+      const mapInstance = new window.google.maps.Map(mapRef.current, {
+        center: defaultCenter,
+        zoom: 12,
+        fullscreenControl: true,
+        streetViewControl: true,
+        mapTypeControl: true,
+        zoomControl: true
+      });
+      
+      // Create a single reusable info window
+      const infoWindow = new window.google.maps.InfoWindow();
+      infoWindowRef.current = infoWindow;
+      
+      // Store map instance in state
+      setMap(mapInstance);
+      
+      // Map is ready
+      setIsLoading(false);
+      
+      console.log('Map initialized successfully');
+    } catch (err) {
+      console.error('Error initializing map:', err);
+      setError('Failed to initialize Google Maps');
+      setIsLoading(false);
+    }
+  };
+
+  // Update markers when map or cars change
+  useEffect(() => {
+    if (!map) return;
+    
+    // Clear existing markers
+    markers.forEach(marker => marker.setMap(null));
+    
+    // Use real cars data or fallback to dummy data for testing
+    const carsToDisplay = cars.length > 0 && cars.some(car => car.latitude && car.longitude) 
+      ? cars 
+      : dummyCars;
+    
+    console.log('Creating markers for cars:', carsToDisplay);
+    
+    // Create bounds to fit all markers
+    const bounds = new window.google.maps.LatLngBounds();
+    const newMarkers = [];
+    let validMarkerCount = 0;
+    
+    carsToDisplay.forEach(car => {
+      // Parse coordinates
+      const lat = parseFloat(car.latitude);
+      const lng = parseFloat(car.longitude);
+      
+      // Verify coordinates are valid
+      if (isNaN(lat) || isNaN(lng)) {
+        console.log(`Car ${car.id}: Invalid coordinates`);
+        return;
+      }
+      
+      // Create marker
+      const marker = new window.google.maps.Marker({
+        position: { lat, lng },
+        map: map,
+        title: `${car.brand || ''} ${car.model || ''}`.trim() || 'Car',
+        animation: window.google.maps.Animation.DROP
+      });
+      
+      // Create info window content
+      const content = `
+        <div style="width: 200px; padding: 10px;">
+          <h3 style="margin: 0 0 5px; font-size: 16px;">${car.brand || ''} ${car.model || ''} ${car.year || ''}</h3>
+          <p style="margin: 5px 0; color: #555;">${car.location || ''}</p>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+            <span style="font-weight: bold; color: #3b82f6;">${car.price_per_day || 0} SAR/day</span>
+            <a href="/cars/${car.id}" style="text-decoration: none; background-color: #3b82f6; color: white; padding: 5px 10px; border-radius: 4px; font-size: 12px;">View Details</a>
+          </div>
+        </div>
+      `;
+      
+      // Add click event
+      marker.addListener('click', () => {
+        // Close any open info window
+        if (infoWindowRef.current) {
+          infoWindowRef.current.close();
+        }
+        
+        // Set content and open
+        infoWindowRef.current.setContent(content);
+        infoWindowRef.current.open(map, marker);
+        
+        // Notify parent component
+        if (onCarSelect) onCarSelect(car);
+      });
+      
+      // Add to new markers array
+      newMarkers.push(marker);
+      
+      // Extend bounds
+      bounds.extend({ lat, lng });
+      validMarkerCount++;
+    });
+    
+    // Set markers in state
+    setMarkers(newMarkers);
+    
+    // Fit map to markers if we have any
+    if (validMarkerCount > 0) {
+      console.log(`Created ${validMarkerCount} markers`);
+      
+      if (validMarkerCount > 1) {
+        map.fitBounds(bounds);
+        
+        // Don't zoom in too far
+        const listener = window.google.maps.event.addListenerOnce(map, 'idle', () => {
+          if (map.getZoom() > 15) map.setZoom(15);
+        });
+      } else {
+        // Single marker - center and zoom
+        map.setCenter(newMarkers[0].getPosition());
+        map.setZoom(14);
+      }
+    } else {
+      // No markers - center on default location
+      map.setCenter(defaultCenter);
+      map.setZoom(10);
+      console.log('No valid markers created, using default center');
+    }
+    
+  }, [map, cars, onCarSelect]);
+
+  // Geocode and center map if search location changes
+  useEffect(() => {
+    if (!map || !searchLocation) return;
+    
+    const geocoder = new window.google.maps.Geocoder();
+    
+    geocoder.geocode({ address: searchLocation + ', Saudi Arabia' }, (results, status) => {
+      if (status === 'OK' && results && results.length > 0) {
+        const location = results[0].geometry.location;
+        
+        // Center map on the location
+        map.setCenter(location);
+        
+        // Add a marker for the location
+        const marker = new window.google.maps.Marker({
+          position: location,
+          map: map,
+          title: results[0].formatted_address || searchLocation,
+          icon: {
+            path: window.google.maps.SymbolPath.CIRCLE,
+            scale: 10,
+            fillColor: '#4285F4',
+            fillOpacity: 0.3,
+            strokeColor: '#4285F4',
+            strokeWeight: 2
+          }
+        });
+        
+        // Add to markers array
+        setMarkers(prev => [...prev, marker]);
+      }
+    });
+  }, [map, searchLocation]);
+
+  // Clean up
+  useEffect(() => {
+    return () => {
+      // Clear all markers when component unmounts
+      markers.forEach(marker => marker.setMap(null));
+    };
+  }, [markers]);
+
+  return (
+    <div className="w-full h-full relative">
+      {error && (
+        <div className="absolute top-0 left-0 right-0 bg-red-100 border-red-500 text-red-700 p-2 z-10">
+          {error}
+        </div>
+      )}
+      
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-70 z-10">
+          <div className="bg-white p-3 rounded-lg shadow-md">Loading map...</div>
+        </div>
+      )}
+      
+      {/* Debug info */}
+      <div className="absolute top-0 right-0 bg-white bg-opacity-75 p-2 z-10 text-xs">
+        Cars: {cars.length} | Markers: {markers.length}
+      </div>
+      
+      <div
+        ref={mapRef}
+        className="w-full h-full"
+        aria-label="Map showing car locations"
+      />
+    </div>
+  );
+};
+
+export default MapView;

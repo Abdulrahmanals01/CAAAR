@@ -1,41 +1,24 @@
+const userStatusMiddleware = require('../middleware/userStatus');
 const { validationResult } = require('express-validator');
-// Add these helper functions at the top of your carController.js file
-
-// Debug function to log image paths
-const logImagePath = (prefix, imagePath) => {
-  console.log(`${prefix} - Original image path:`, imagePath);
-  if (!imagePath) {
-    console.log(`${prefix} - No image path provided`);
-    return null;
-  }
-  
-  // Extract filename
-  const filename = imagePath.includes('/') ? imagePath.split('/').pop() : imagePath;
-  console.log(`${prefix} - Extracted filename:`, filename);
-  
-  const fullUrl = `${process.env.API_URL || 'http://localhost:5000'}/uploads/cars/${filename}`;
-  console.log(`${prefix} - Generated full URL:`, fullUrl);
-  return fullUrl;
-};
-
-// Ensure consistent image URL generation
-const formatImageUrl = (imagePath) => {
-  if (!imagePath) return null;
-  
-  // For direct paths like 'uploads/cars/image.jpg'
-  if (imagePath.includes('uploads/cars/')) {
-    return `${process.env.API_URL || 'http://localhost:5000'}/${imagePath}`;
-  }
-  
-  // For just filenames
-  return `${process.env.API_URL || 'http://localhost:5000'}/uploads/cars/${imagePath}`;
-};
 const db = require('../config/database');
 const fs = require('fs');
 const path = require('path');
+const { formatImageUrl, normalizeImagePath } = require('../utils/imageUtils');
 
-// Add this helper function at the top of your carController.js file
-// This will ensure all image URLs are formatted correctly
+// Helper function to check for active bookings
+const hasActiveBookings = async (carId) => {
+  const currentDate = new Date().toISOString().split('T')[0]; // Today's date in YYYY-MM-DD
+
+  const activeBookingsQuery = `
+    SELECT COUNT(*) as booking_count
+    FROM bookings
+    WHERE car_id = $1
+    AND status = 'accepted'
+    AND end_date >= $2`;
+
+  const result = await db.query(activeBookingsQuery, [carId, currentDate]);
+  return result.rows[0].booking_count > 0;
+};
 
 // Create a new car listing
 exports.createCar = async (req, res) => {
@@ -57,7 +40,10 @@ exports.createCar = async (req, res) => {
       latitude,
       longitude,
       availability_start,
-      availability_end
+      availability_end,
+      description,
+      car_type,
+      features
     } = req.body;
 
     // Check if user is a host
@@ -66,30 +52,46 @@ exports.createCar = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    if (userCheck.rows[0].role !== 'host' && userCheck.rows[0].role !== 'admin') {      
-      return res.status(403).json({ message: 'Only hosts can create car listings' });   
+    if (userCheck.rows[0].role !== 'host' && userCheck.rows[0].role !== 'admin') {
+      return res.status(403).json({ message: 'Only hosts can create car listings' });
     }
 
-    // Handle image upload
-    // Store only relative paths
+    // Handle image upload - normalize the path
     let image = null;
     if (req.file) {
-      // Extract the relative path to ensure consistency
-      image = req.file.path.replace(/^.*[\/]uploads[\/]/, "uploads/");
+      // Use our utility to normalize the path
+      image = normalizeImagePath(req.file.path, 'cars');
       console.log("Normalized image path:", image);
     }
 
     // Check if plate number already exists
-    const plateCheck = await db.query('SELECT id FROM cars WHERE plate = $1', [plate]); 
+    const plateCheck = await db.query('SELECT id FROM cars WHERE plate = $1', [plate]);
     if (plateCheck.rows.length > 0) {
       return res.status(400).json({ message: 'Car with this plate number already exists' });
     }
 
-    // Insert car into database
+    // Process features
+    let featuresJson = null;
+    if (features) {
+      try {
+        if (typeof features === 'string') {
+          featuresJson = JSON.parse(features);
+        } else {
+          featuresJson = features;
+        }
+      } catch (e) {
+        console.error('Error parsing features:', e);
+        featuresJson = [];
+      }
+    }
+
+    // Insert car into database with features and car_type
     const carInsert = await db.query(
       `INSERT INTO cars
-      (user_id, brand, model, year, plate, color, mileage, price_per_day, location, latitude, longitude, availability_start, availability_end, image)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      (user_id, brand, model, year, plate, color, mileage, price_per_day, location,
+       latitude, longitude, availability_start, availability_end, image, description,
+       car_type, features)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
       RETURNING *`,
       [
         req.user.id,
@@ -105,44 +107,143 @@ exports.createCar = async (req, res) => {
         longitude || null,
         availability_start,
         availability_end,
-        image
+        image,
+        description,
+        car_type || null,
+        featuresJson ? JSON.stringify(featuresJson) : '[]'
       ]
     );
 
-    res.status(201).json(carInsert.rows[0]);
+    // Add image_url to the response
+    const car = carInsert.rows[0];
+    if (car.image) {
+      car.image_url = formatImageUrl(car.image, 'cars');
+    }
+
+    res.status(201).json(car);
   } catch (err) {
     console.error('Error creating car listing:', err.message);
-    res.status(500).json({ message: 'Server error while creating car listing' });       
+    res.status(500).json({ message: 'Server error while creating car listing' });
   }
 };
 
-// Get all available cars
+// Get all available cars with optional filtering
 exports.getCars = async (req, res) => {
   try {
-    // Build the query to get all cars with host information
-    // Modified to handle if status column may not exist
-    const query = `
+    // Extract filter parameters
+    const {
+      location,
+      brand,
+      min_price,
+      max_price,
+      start_date,
+      end_date,
+      car_type,
+      features
+    } = req.query;
+
+    // Start building the query
+    let queryString = `
       SELECT c.id, c.brand, c.model, c.year, c.color, c.mileage,
              c.price_per_day, c.location, c.availability_start,
              c.availability_end, c.image, c.created_at, c.user_id,
-             u.name as host_name, u.id as host_id
+             c.description, c.car_type, c.features, u.name as host_name, u.id as host_id
       FROM cars c
       JOIN users u ON c.user_id = u.id
-      ORDER BY c.created_at DESC
+      WHERE 1=1
     `;
 
-    const result = await db.query(query);
+    // Array to hold the parameters for the query
+    const queryParams = [];
+    let paramCount = 1;
+
+    // Add filters if they exist
+    if (location) {
+      // Improved location matching - match at word boundaries
+      queryString += ` AND (
+        c.location ILIKE $${paramCount} OR
+        c.location ILIKE $${paramCount + 1} OR
+        c.location ILIKE $${paramCount + 2}
+      )`;
+      queryParams.push(`${location}%`);  // Starts with location
+      queryParams.push(`% ${location}%`); // Has location after a space
+      queryParams.push(`%,${location}%`); // Has location after a comma
+      paramCount += 3;
+    }
+
+    if (brand) {
+      queryString += ` AND c.brand ILIKE $${paramCount}`;
+      queryParams.push(`%${brand}%`);
+      paramCount++;
+    }
+
+    if (min_price) {
+      queryString += ` AND c.price_per_day >= $${paramCount}`;
+      queryParams.push(parseFloat(min_price));
+      paramCount++;
+    }
+
+    if (max_price) {
+      queryString += ` AND c.price_per_day <= $${paramCount}`;
+      queryParams.push(parseFloat(max_price));
+      paramCount++;
+    }
+
+    if (start_date && end_date) {
+      queryString += ` AND c.availability_start <= $${paramCount} AND c.availability_end >= $${paramCount + 1}`;
+      queryParams.push(end_date, start_date);
+      paramCount += 2;
+    }
+
+    // Filter by car type
+    if (car_type && car_type !== 'all') {
+      queryString += ` AND c.car_type = $${paramCount}`;
+      queryParams.push(car_type);
+      paramCount++;
+    }
+
+    // Filter by features
+    if (features) {
+      let featuresArray;
+
+      try {
+        if (typeof features === 'string') {
+          // Check if it's a JSON string
+          if (features.startsWith('[')) {
+            featuresArray = JSON.parse(features);
+          } else {
+            // Single feature as string
+            featuresArray = [features];
+          }
+        } else if (Array.isArray(features)) {
+          featuresArray = features;
+        } else {
+          featuresArray = [];
+        }
+
+        // Add feature filters
+        featuresArray.forEach(feature => {
+          queryString += ` AND c.features @> $${paramCount}::jsonb`;
+          queryParams.push(JSON.stringify([feature]));
+          paramCount++;
+        });
+      } catch (e) {
+        console.error('Error parsing features filter:', e);
+      }
+    }
+
+    // Order by creation date (newest first)
+    queryString += ` ORDER BY c.created_at DESC`;
+
+    console.log('Car query: ', queryString);
+    console.log('Car query params: ', queryParams);
+
+    const result = await db.query(queryString, queryParams);
 
     // Format image URLs
     const cars = result.rows.map(car => {
       if (car.image) {
-        console.log("All cars - Original image path:", car.image);
-        // Remove 'uploads/' from the beginning if present
-        const imagePath = car.image.startsWith('uploads/')
-          ? car.image
-          : car.image;
-
-        car.image_url = formatImageUrl(car.image);
+        car.image_url = formatImageUrl(car.image, 'cars');
       }
       return car;
     });
@@ -176,21 +277,14 @@ exports.getCarById = async (req, res) => {
 
     // Format image URL
     if (car.image) {
-      console.log('Debug - Car image path:', car.image);
-      console.log('Debug - Car image URL:', car.image_url);
-      console.log("Car detail - Original image path:", car.image);
-      const imagePath = car.image.startsWith('uploads/')
-        ? car.image
-        : car.image;
-
-      car.image_url = formatImageUrl(car.image);
+      car.image_url = formatImageUrl(car.image, 'cars');
       console.log("Car details - Generated image URL:", car.image_url);
     }
 
     res.json(car);
   } catch (err) {
     console.error('Error fetching car details:', err.message);
-    res.status(500).json({ message: 'Server error while fetching car details' });       
+    res.status(500).json({ message: 'Server error while fetching car details' });
   }
 };
 
@@ -210,12 +304,7 @@ exports.getHostCars = async (req, res) => {
     // Format image URLs
     const formattedCars = cars.rows.map(car => {
       if (car.image) {
-        console.log("Host cars - Original image path:", car.image);
-        const imagePath = car.image.startsWith('uploads/')
-          ? car.image
-          : car.image;
-
-        car.image_url = formatImageUrl(car.image);
+        car.image_url = formatImageUrl(car.image, 'cars');
       }
       return car;
     });
@@ -254,6 +343,15 @@ exports.deleteCar = async (req, res) => {
       }
     }
 
+    // Check for active bookings
+    const activeBookings = await hasActiveBookings(carId);
+
+    if (activeBookings) {
+      return res.status(400).json({
+        message: 'Cannot delete car with active bookings. You must wait until all current bookings are completed.'
+      });
+    }
+
     // Delete the car from the database
     await db.query('DELETE FROM cars WHERE id = $1', [carId]);
 
@@ -261,5 +359,122 @@ exports.deleteCar = async (req, res) => {
   } catch (err) {
     console.error('Error deleting car:', err.message);
     return res.status(500).json({ message: 'Server error while deleting car listing' });
+  }
+};
+
+// Update car availability
+exports.updateCarAvailability = async (req, res) => {
+  try {
+    const carId = req.params.id;
+    const { availability_start, availability_end } = req.body;
+    const userId = req.user.id;
+
+    // Input validation
+    if (!availability_start || !availability_end) {
+      return res.status(400).json({ message: 'Both start and end dates are required' });
+    }
+
+    // Validate date range
+    if (new Date(availability_end) < new Date(availability_start)) {
+      return res.status(400).json({ message: 'End date must be after start date' });
+    }
+
+    // Check if car exists and belongs to the user
+    const carCheck = await db.query(
+      'SELECT * FROM cars WHERE id = $1',
+      [carId]
+    );
+
+    if (carCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'Car not found' });
+    }
+
+    const car = carCheck.rows[0];
+
+    // Verify ownership
+    if (car.user_id !== userId) {
+      return res.status(403).json({ message: 'Not authorized to update this car' });
+    }
+
+    // Check for active bookings that would be affected by this date change
+    const bookingConflictCheck = await db.query(
+      `SELECT COUNT(*) as conflict_count
+       FROM bookings
+       WHERE car_id = $1
+       AND status = 'accepted'
+       AND (
+         (start_date < $2) OR
+         (end_date > $3)
+       )`,
+      [carId, availability_start, availability_end]
+    );
+
+    if (bookingConflictCheck.rows[0].conflict_count > 0) {
+      return res.status(409).json({
+        message: 'Cannot update availability: there are active bookings outside of the new date range'
+      });
+    }
+
+    // Update the car's availability
+    const updateResult = await db.query(
+      `UPDATE cars
+       SET availability_start = $1,
+           availability_end = $2,
+           updated_at = NOW()
+       WHERE id = $3
+       RETURNING *`,
+      [availability_start, availability_end, carId]
+    );
+
+    const updatedCar = updateResult.rows[0];
+
+    // Format image URL if present
+    if (updatedCar.image) {
+      updatedCar.image_url = formatImageUrl(updatedCar.image, 'cars');
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Car availability updated successfully',
+      car: updatedCar
+    });
+  } catch (err) {
+    console.error('Error updating car availability:', err.message);
+    return res.status(500).json({ message: 'Server error while updating car availability' });
+  }
+};
+
+// Check if a car has active bookings
+exports.checkActiveBookings = async (req, res) => {
+  try {
+    const carId = req.params.id;
+    const userId = req.user.id;
+
+    // Check if car exists and belongs to the user
+    const carCheck = await db.query(
+      'SELECT * FROM cars WHERE id = $1',
+      [carId]
+    );
+
+    if (carCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'Car not found' });
+    }
+
+    const car = carCheck.rows[0];
+
+    // Verify ownership
+    if (car.user_id !== userId) {
+      return res.status(403).json({ message: 'Not authorized to check this car' });
+    }
+
+    // Check for active bookings
+    const hasBookings = await hasActiveBookings(carId);
+
+    return res.status(200).json({
+      hasActiveBookings: hasBookings
+    });
+  } catch (err) {
+    console.error('Error checking active bookings:', err.message);
+    return res.status(500).json({ message: 'Server error while checking active bookings' });
   }
 };

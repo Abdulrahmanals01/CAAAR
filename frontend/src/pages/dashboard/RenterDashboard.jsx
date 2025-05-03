@@ -55,7 +55,7 @@ const RenterDashboard = () => {
   const handleCancelBooking = async (bookingId) => {
     try {
       const token = localStorage.getItem('token');
-      await axios.put(`http://localhost:5000/api/bookings/${bookingId}/status`, 
+      await axios.put(`http://localhost:5000/api/bookings/${bookingId}/status`,
         { status: 'canceled' },
         { headers: { 'Authorization': `Bearer ${token}` } }
       );
@@ -67,12 +67,12 @@ const RenterDashboard = () => {
   };
 
   // Filter bookings by status
-  const currentBookings = bookings.filter(booking => 
+  const currentBookings = bookings.filter(booking =>
     booking.status === 'accepted' && new Date(booking.end_date) >= new Date()
   );
   const pendingBookings = bookings.filter(booking => booking.status === 'pending');
   const pastBookings = bookings.filter(booking =>
-    ['rejected', 'canceled', 'completed'].includes(booking.status) || 
+    ['rejected', 'canceled', 'completed'].includes(booking.status) ||
     (booking.status === 'accepted' && new Date(booking.end_date) < new Date())
   );
 
@@ -113,7 +113,7 @@ const RenterDashboard = () => {
             Browse All Cars
           </Link>
         </form>
-        
+
         {/* Search Results */}
         {searchResults.length > 0 && (
           <div className="mt-4">
@@ -162,7 +162,7 @@ const RenterDashboard = () => {
                 : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
           >
-            Past Trips <span className="ml-2 bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs">{counts.past}</span>  
+            Past Trips <span className="ml-2 bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs">{counts.past}</span>
           </button>
         </nav>
       </div>
@@ -174,7 +174,7 @@ const RenterDashboard = () => {
           {activeTab === 'current' && <p>You don't have any active bookings at the moment.</p>}
           {activeTab === 'pending' && <p>You don't have any pending bookings at the moment.</p>}
           {activeTab === 'past' && <p>You don't have any past bookings yet.</p>}
-          <Link to="/cars" className="mt-4 inline-block bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600">
+          <Link to="/cars" className="mt-4 inline-block bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600">    
             Find a Car to Book
           </Link>
         </div>
@@ -184,7 +184,7 @@ const RenterDashboard = () => {
             <div key={booking.id} className="bg-white border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
               {booking.image && (
                 <img
-                  src={booking.image.startsWith('http') ? booking.image : `http://localhost:5000/${booking.image}`}
+                  src={booking.image.startsWith('http') ? booking.image : `http://localhost:5000/${booking.image}`}     
                   alt={`${booking.brand} ${booking.model}`}
                   className="w-full h-48 object-cover"
                 />
@@ -192,8 +192,8 @@ const RenterDashboard = () => {
               <div className="p-4">
                 <h3 className="font-bold text-lg mb-2">{booking.brand} {booking.model} ({booking.year})</h3>
                 <div className="space-y-2 text-sm text-gray-600">
-                  <p><span className="font-semibold">From:</span> {new Date(booking.start_date).toLocaleDateString()}</p>      
-                  <p><span className="font-semibold">To:</span> {new Date(booking.end_date).toLocaleDateString()}</p>
+                  <p><span className="font-semibold">From:</span> {new Date(booking.start_date).toLocaleDateString()}</p>
+                  <p><span className="font-semibold">To:</span> {new Date(booking.end_date).toLocaleDateString()}</p>   
                   <p>
                     <span className="font-semibold">Status:</span>
                     <span className={`ml-2 px-2 py-1 rounded-full text-xs
@@ -222,22 +222,22 @@ const RenterDashboard = () => {
                   {booking.status === 'accepted' && new Date(booking.end_date) >= new Date() && (
                     <Link
                       to={`/messages/${booking.host_id}`}
-                      className="w-full block text-center bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                      className="w-full block text-center bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"   
                     >
                       Message Host
                     </Link>
                   )}
                   {booking.status === 'completed' && (
-                    <Link 
-                      to={`/review/${booking.id}`} 
-                      className="w-full block text-center bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+                    <Link
+                      to={`/review/${booking.id}`}
+                      className="w-full block text-center bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600" 
                     >
                       Leave a Review
                     </Link>
                   )}
                   <Link
                     to={`/cars/${booking.car_id}`}
-                    className="w-full block text-center bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+                    className="w-full block text-center bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"     
                   >
                     View Car Details
                   </Link>

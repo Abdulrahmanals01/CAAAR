@@ -11,9 +11,14 @@ exports.createBooking = async (req, res) => {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
+    // Check if start date is before end date
+    if (new Date(end_date) < new Date(start_date)) {
+      return res.status(400).json({ message: 'End date must be after start date' });
+    }
+
     // Check if the user is trying to book their own car
     const carOwnerCheck = await db.query(
-      'SELECT user_id FROM cars WHERE id = $1',
+      'SELECT user_id, availability_start, availability_end FROM cars WHERE id = $1',
       [car_id]
     );
 
@@ -22,11 +27,20 @@ exports.createBooking = async (req, res) => {
     }
 
     const carOwnerId = carOwnerCheck.rows[0].user_id;
+    const availabilityStart = carOwnerCheck.rows[0].availability_start;
+    const availabilityEnd = carOwnerCheck.rows[0].availability_end;
 
     // Prevent booking own car
     if (carOwnerId === renter_id) {
       return res.status(403).json({
         message: 'You cannot book your own car'
+      });
+    }
+
+    // Check if booking dates are within car's availability window
+    if (new Date(start_date) < new Date(availabilityStart) || new Date(end_date) > new Date(availabilityEnd)) {
+      return res.status(409).json({
+        message: `This car is only available from ${new Date(availabilityStart).toLocaleDateString()} to ${new Date(availabilityEnd).toLocaleDateString()}`
       });
     }
 
@@ -91,6 +105,38 @@ exports.createBooking = async (req, res) => {
   }
 };
 
+// Get available dates for a car
+exports.getCarAvailability = async (req, res) => {
+  try {
+    const { carId } = req.params;
+
+    // First, get the car details to check its overall availability period
+    const carResult = await db.query('SELECT * FROM cars WHERE id = $1', [carId]);
+
+    if (carResult.rows.length === 0) {
+      return res.status(404).json({ message: 'Car not found' });
+    }
+
+    // Then get all accepted bookings for this car
+    const bookingsResult = await db.query(
+      `SELECT start_date, end_date
+       FROM bookings
+       WHERE car_id = $1
+       AND status = 'accepted'
+       ORDER BY start_date`,
+      [carId]
+    );
+
+    // Return the car info and booked periods
+    res.json({
+      car: carResult.rows[0],
+      bookedPeriods: bookingsResult.rows
+    });
+  } catch (err) {
+    console.error('Error getting car availability:', err);
+    res.status(500).json({ message: 'Server error while getting car availability' });
+  }
+};
 // Get user's bookings
 exports.getUserBookings = async (req, res) => {
   try {
@@ -152,7 +198,7 @@ exports.getUserBookings = async (req, res) => {
   }
 };
 
-// Update booking status (normal method)
+// Update booking status
 exports.updateBookingStatus = async (req, res) => {
   try {
     const bookingId = req.params.id;
@@ -253,7 +299,7 @@ exports.updateBookingStatus = async (req, res) => {
   }
 };
 
-// Special function to handle booking acceptance
+// Helper functions for booking status updates
 async function acceptBooking(req, res, bookingId) {
   // Get a client from the pool for transaction
   const client = await db.pool.connect();
@@ -372,7 +418,6 @@ async function acceptBooking(req, res, bookingId) {
   }
 }
 
-// Add specific function to handle rejection with proper checks
 async function rejectBooking(req, res, bookingId) {
   // Get a client from the pool for transaction
   const client = await db.pool.connect();
@@ -467,7 +512,6 @@ async function rejectBooking(req, res, bookingId) {
   }
 }
 
-// Special function to handle cancellation
 async function cancelBooking(req, res, bookingId) {
   try {
     const userId = req.user.id;
@@ -541,36 +585,3 @@ async function cancelBooking(req, res, bookingId) {
     return res.status(500).json({ message: 'Server error while canceling booking' });
   }
 }
-
-// Get available dates for a car
-exports.getCarAvailability = async (req, res) => {
-  try {
-    const { carId } = req.params;
-
-    // First, get the car details to check its overall availability period
-    const carResult = await db.query('SELECT * FROM cars WHERE id = $1', [carId]);
-
-    if (carResult.rows.length === 0) {
-      return res.status(404).json({ message: 'Car not found' });
-    }
-
-    // Then get all accepted bookings for this car
-    const bookingsResult = await db.query(
-      `SELECT start_date, end_date
-       FROM bookings
-       WHERE car_id = $1
-       AND status = 'accepted'
-       ORDER BY start_date`,
-      [carId]
-    );
-
-    // Return the car info and booked periods
-    res.json({
-      car: carResult.rows[0],
-      bookedPeriods: bookingsResult.rows
-    });
-  } catch (err) {
-    console.error('Error getting car availability:', err);
-    res.status(500).json({ message: 'Server error while getting car availability' });
-  }
-};

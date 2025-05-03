@@ -1,0 +1,310 @@
+const userStatusMiddleware = require('../middleware/userStatus');
+const { validationResult } = require('express-validator');
+const db = require('../config/database');
+const fs = require('fs');
+const path = require('path');
+const { formatImageUrl, normalizeImagePath } = require('../utils/imageUtils');
+
+// Helper function to check for active bookings
+const hasActiveBookings = async (carId) => {
+  const currentDate = new Date().toISOString().split('T')[0]; // Today's date in YYYY-MM-DD
+
+  const activeBookingsQuery = `
+    SELECT COUNT(*) as booking_count
+    FROM bookings
+    WHERE car_id = $1
+    AND status = 'accepted'
+    AND end_date >= $2`;
+
+  const result = await db.query(activeBookingsQuery, [carId, currentDate]);
+  return result.rows[0].booking_count > 0;
+};
+
+// Create a new car listing
+exports.createCar = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  try {
+    const {
+      brand,
+      model,
+      year,
+      plate,
+      color,
+      mileage,
+      price_per_day,
+      location,
+      latitude,
+      longitude,
+      availability_start,
+      availability_end,
+      description,
+      car_type,
+      features
+    } = req.body;
+
+    // Check if user is a host
+    const userCheck = await db.query('SELECT role FROM users WHERE id = $1', [req.user.id]);
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (userCheck.rows[0].role !== 'host' && userCheck.rows[0].role !== 'admin') {
+      return res.status(403).json({ message: 'Only hosts can create car listings' });
+    }
+
+    // Handle image upload - normalize the path
+    let image = null;
+    if (req.file) {
+      // Use our utility to normalize the path
+      image = normalizeImagePath(req.file.path, 'cars');
+      console.log("Normalized image path:", image);
+    }
+
+    // Check if plate number already exists
+    const plateCheck = await db.query('SELECT id FROM cars WHERE plate = $1', [plate]);
+    if (plateCheck.rows.length > 0) {
+      return res.status(400).json({ message: 'Car with this plate number already exists' });
+    }
+
+    // Process features
+    let featuresJson = null;
+    if (features) {
+      try {
+        if (typeof features === 'string') {
+          featuresJson = JSON.parse(features);
+        } else {
+          featuresJson = features;
+        }
+      } catch (e) {
+        console.error('Error parsing features:', e);
+        featuresJson = [];
+      }
+    }
+
+    // Insert car into database with features and car_type
+    const carInsert = await db.query(
+      `INSERT INTO cars
+      (user_id, brand, model, year, plate, color, mileage, price_per_day, location,
+       latitude, longitude, availability_start, availability_end, image, description,
+       car_type, features)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+      RETURNING *`,
+      [
+        req.user.id,
+        brand,
+        model,
+        year,
+        plate,
+        color,
+        mileage,
+        price_per_day,
+        location,
+        latitude || null,
+        longitude || null,
+        availability_start,
+        availability_end,
+        image,
+        description,
+        car_type || null,
+        featuresJson ? JSON.stringify(featuresJson) : '[]'
+      ]
+    );
+
+    // Add image_url to the response
+    const car = carInsert.rows[0];
+    if (car.image) {
+      car.image_url = formatImageUrl(car.image, 'cars');
+    }
+
+    res.status(201).json(car);
+  } catch (err) {
+    console.error('Error creating car listing:', err.message);
+    res.status(500).json({ message: 'Server error while creating car listing' });
+  }
+};
+
+// Get all available cars with optional filtering
+exports.getCars = async (req, res) => {
+  try {
+    // Extract filter parameters
+    const {
+      location,
+      brand,
+      min_price,
+      max_price,
+      min_year,
+      max_year,
+      start_date,
+      end_date,
+      car_type,
+      colors,
+      features
+    } = req.query;
+
+    // Start building the query
+    let queryString = `
+      SELECT c.id, c.brand, c.model, c.year, c.color, c.mileage,
+             c.price_per_day, c.location, c.availability_start,
+             c.availability_end, c.image, c.created_at, c.user_id,
+             c.description, c.car_type, c.features, u.name as host_name, u.id as host_id,
+             c.latitude, c.longitude
+      FROM cars c
+      JOIN users u ON c.user_id = u.id
+      WHERE 1=1
+    `;
+
+    // Array to hold the parameters for the query
+    const queryParams = [];
+    let paramCount = 1;
+
+    // Add filters if they exist
+    if (location) {
+      // Improved location matching - match at word boundaries
+      queryString += ` AND (
+        c.location ILIKE $${paramCount} OR
+        c.location ILIKE $${paramCount + 1} OR
+        c.location ILIKE $${paramCount + 2}
+      )`;
+      queryParams.push(`${location}%`);  // Starts with location
+      queryParams.push(`% ${location}%`); // Has location after a space
+      queryParams.push(`%,${location}%`); // Has location after a comma
+      paramCount += 3;
+    }
+
+    if (brand) {
+      queryString += ` AND c.brand ILIKE $${paramCount}`;
+      queryParams.push(`%${brand}%`);
+      paramCount++;
+    }
+
+    if (min_price) {
+      queryString += ` AND c.price_per_day >= $${paramCount}`;
+      queryParams.push(parseFloat(min_price));
+      paramCount++;
+    }
+
+    if (max_price) {
+      queryString += ` AND c.price_per_day <= $${paramCount}`;
+      queryParams.push(parseFloat(max_price));
+      paramCount++;
+    }
+
+    // Year filter
+    if (min_year) {
+      queryString += ` AND c.year >= $${paramCount}`;
+      queryParams.push(parseInt(min_year));
+      paramCount++;
+    }
+
+    if (max_year) {
+      queryString += ` AND c.year <= $${paramCount}`;
+      queryParams.push(parseInt(max_year));
+      paramCount++;
+    }
+
+    if (start_date && end_date) {
+      // FIX: Correct parameter order - availability_start should be compared with start_date
+      queryString += ` AND c.availability_start <= $${paramCount} AND c.availability_end >= $${paramCount + 1}`;        
+      queryParams.push(start_date, end_date); // Fix: correct parameter order
+      paramCount += 2;
+    }
+
+    // Filter by car type
+    if (car_type && car_type !== 'all') {
+      queryString += ` AND c.car_type = $${paramCount}`;
+      queryParams.push(car_type);
+      paramCount++;
+    }
+
+    // Filter by colors
+    if (colors) {
+      let colorsArray;
+
+      try {
+        if (typeof colors === 'string') {
+          // Check if it's a JSON string
+          if (colors.startsWith('[')) {
+            colorsArray = JSON.parse(colors);
+          } else {
+            // Single color as string
+            colorsArray = [colors];
+          }
+        } else if (Array.isArray(colors)) {
+          colorsArray = colors;
+        } else {
+          colorsArray = [];
+        }
+
+        if (colorsArray.length > 0) {
+          queryString += ` AND (`;
+          colorsArray.forEach((color, index) => {
+            if (index > 0) queryString += ` OR `;
+            queryString += `LOWER(c.color) = LOWER($${paramCount})`;
+            queryParams.push(color);
+            paramCount++;
+          });
+          queryString += `)`;
+        }
+      } catch (e) {
+        console.error('Error parsing colors filter:', e);
+      }
+    }
+
+    // Filter by features
+    if (features) {
+      let featuresArray;
+
+      try {
+        if (typeof features === 'string') {
+          // Check if it's a JSON string
+          if (features.startsWith('[')) {
+            featuresArray = JSON.parse(features);
+          } else {
+            // Single feature as string
+            featuresArray = [features];
+          }
+        } else if (Array.isArray(features)) {
+          featuresArray = features;
+        } else {
+          featuresArray = [];
+        }
+
+        // Add feature filters
+        featuresArray.forEach(feature => {
+          queryString += ` AND c.features @> $${paramCount}::jsonb`;
+          queryParams.push(JSON.stringify([feature]));
+          paramCount++;
+        });
+      } catch (e) {
+        console.error('Error parsing features filter:', e);
+      }
+    }
+
+    // Order by creation date (newest first)
+    queryString += ` ORDER BY c.created_at DESC`;
+
+    console.log('Car query: ', queryString);
+    console.log('Car query params: ', queryParams);
+
+    const result = await db.query(queryString, queryParams);
+
+    // Format image URLs
+    const cars = result.rows.map(car => {
+      if (car.image) {
+        car.image_url = formatImageUrl(car.image, 'cars');
+      }
+      return car;
+    });
+
+    res.json(cars);
+  } catch (err) {
+    console.error('Error fetching cars:', err.message);
+    res.status(500).json({ message: 'Server error while fetching cars' });
+  }
+};
+
+// Rest of the controller remains unchanged...

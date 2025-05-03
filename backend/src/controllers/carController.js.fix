@@ -1,246 +1,41 @@
-const { validationResult } = require('express-validator');
-const db = require('../config/database');
-const fs = require('fs');
-const path = require('path');
-
-// Helper function to format image URLs consistently
-const formatImageUrl = (imagePath) => {
-  if (!imagePath) return null;
-  
-  // Get the base URL
-  const baseUrl = process.env.API_URL || "http://localhost:5000";
-  
-  // Case 1: If it's already a complete URL, return it
-  if (imagePath.startsWith("http")) {
-    return imagePath;
-  }
-  
-  // Case 2: If it's an absolute path from the filesystem
-  if (imagePath.startsWith("/mnt/") || imagePath.startsWith("C:")) {
-    // Extract just the filename
-    const parts = imagePath.split("/");
-    const filename = parts[parts.length - 1];
-    return `${baseUrl}/uploads/cars/${imagePath.split("/").pop()}`;
-  }
-  
-  // Case 3: If it's already a proper relative path
-  if (imagePath.startsWith("uploads/")) {
-    return `${baseUrl}/${imagePath}`;
-  }
-  
-  // Case 4: If it's just a filename
-  return `${baseUrl}/uploads/cars/${imagePath.split("/").pop()}`;
-};
-
-// Create a new car listing
-exports.createCar = async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-
+// Get cars owned by the current user (host)
+exports.getHostCars = async (req, res) => {
   try {
-    const {
-      brand,
-      model,
-      year,
-      plate,
-      color,
-      mileage,
-      price_per_day,
-      location,
-      latitude,
-      longitude,
-      availability_start,
-      availability_end
-    } = req.body;
+    const userId = req.user.id;
 
-    // Check if user is a host
-    const userCheck = await db.query('SELECT role FROM users WHERE id = $1', [req.user.id]);
-    if (userCheck.rows.length === 0) {
-      return res.status(404).json({ message: 'User not found' });
-    }
+    console.log(`Fetching cars for host ${userId}`);
 
-    if (userCheck.rows[0].role !== 'host' && userCheck.rows[0].role !== 'admin') {
-      return res.status(403).json({ message: 'Only hosts can create car listings' });
-    }
-
-    // Handle image upload - normalize the path
-    let image = null;
-    if (req.file) {
-      // Extract the relative path to ensure consistency
-      image = req.file.path.replace(/^.*[\/\\]uploads[\/\\]/, "uploads/");
-      console.log("Normalized image path:", image);
-    }
-
-    // Check if plate number already exists
-    const plateCheck = await db.query('SELECT id FROM cars WHERE plate = $1', [plate]);
-    if (plateCheck.rows.length > 0) {
-      return res.status(400).json({ message: 'Car with this plate number already exists' });
-    }
-
-    // Insert car into database
-    const carInsert = await db.query(
-      `INSERT INTO cars
-      (user_id, brand, model, year, plate, color, mileage, price_per_day, location, latitude, longitude, availability_start, availability_end, image)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-      RETURNING *`,
-      [
-        req.user.id,
-        brand,
-        model,
-        year,
-        plate,
-        color,
-        mileage,
-        price_per_day,
-        location,
-        latitude || null,
-        longitude || null,
-        availability_start,
-        availability_end,
-        image
-      ]
-    );
-
-    // Add image_url to the response
-    const car = carInsert.rows[0];
-    if (car.image) {
-      car.image_url = formatImageUrl(car.image);
-    }
-
-    res.status(201).json(car);
-  } catch (err) {
-    console.error('Error creating car listing:', err.message);
-    res.status(500).json({ message: 'Server error while creating car listing' });
-  }
-};
-
-// Get all available cars
-exports.getCars = async (req, res) => {
-  try {
-    // Build the query to get all cars with host information
     const query = `
-      SELECT c.id, c.brand, c.model, c.year, c.color, c.mileage,
-             c.price_per_day, c.location, c.availability_start,
-             c.availability_end, c.image, c.created_at, c.user_id,
-             u.name as host_name, u.id as host_id
+      SELECT c.*, 
+             (SELECT COUNT(*) FROM bookings b WHERE b.car_id = c.id AND b.status = 'accepted') as active_bookings_count
       FROM cars c
-      JOIN users u ON c.user_id = u.id
+      WHERE c.user_id = $1
       ORDER BY c.created_at DESC
     `;
 
-    const result = await db.query(query);
+    const result = await db.query(query, [userId]);
+    
+    console.log(`Found ${result.rows.length} cars for host ${userId}`);
 
     // Format image URLs
     const cars = result.rows.map(car => {
-      if (car.image) {
-        car.image_url = formatImageUrl(car.image);
+      if (car.image && !car.image_url) {
+        const baseUrl = process.env.BASE_URL || 'http://localhost:5000';
+        
+        // Normalize the path
+        let imagePath = car.image;
+        if (!imagePath.startsWith('uploads/')) {
+          imagePath = `uploads/cars/${imagePath}`;
+        }
+        
+        car.image_url = `${baseUrl}/${imagePath}`;
       }
       return car;
     });
 
     res.json(cars);
   } catch (err) {
-    console.error('Error fetching cars:', err.message);
+    console.error('Error fetching host cars:', err);
     res.status(500).json({ message: 'Server error while fetching cars' });
-  }
-};
-
-// Get car by ID
-exports.getCarById = async (req, res) => {
-  try {
-    const carId = req.params.id;
-
-    const query = `
-      SELECT c.*, u.name as host_name, u.id as host_id
-      FROM cars c
-      JOIN users u ON c.user_id = u.id
-      WHERE c.id = $1
-    `;
-
-    const result = await db.query(query, [carId]);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Car not found' });
-    }
-
-    const car = result.rows[0];
-
-    // Format image URL
-    if (car.image) {
-      car.image_url = formatImageUrl(car.image);
-      console.log("Car details - Generated image URL:", car.image_url);
-    }
-
-    res.json(car);
-  } catch (err) {
-    console.error('Error fetching car details:', err.message);
-    res.status(500).json({ message: 'Server error while fetching car details' });
-  }
-};
-
-// Get host's cars
-exports.getHostCars = async (req, res) => {
-  try {
-    const hostId = req.user.id;
-    console.log('Fetching cars for host ID:', hostId);
-
-    const cars = await db.query(
-      `SELECT * FROM cars WHERE user_id = $1 ORDER BY created_at DESC`,
-      [hostId]
-    );
-
-    console.log(`Found ${cars.rows.length} cars for host ID ${hostId}`);
-
-    // Format image URLs
-    const formattedCars = cars.rows.map(car => {
-      if (car.image) {
-        car.image_url = formatImageUrl(car.image);
-      }
-      return car;
-    });
-
-    res.json(formattedCars);
-  } catch (err) {
-    console.error('Error fetching host cars:', err.message);
-    res.status(500).json({ message: 'Server error while fetching host cars' });
-  }
-};
-
-// Delete a car listing
-exports.deleteCar = async (req, res) => {
-  try {
-    const carId = req.params.id;
-    const userId = req.user.id;
-
-    // Check if car exists and belongs to the requesting user
-    const carCheck = await db.query(
-      'SELECT * FROM cars WHERE id = $1',
-      [carId]
-    );
-
-    if (carCheck.rows.length === 0) {
-      return res.status(404).json({ message: 'Car not found' });
-    }
-
-    const car = carCheck.rows[0];
-
-    // Verify ownership (only the owner or admin can delete)
-    if (car.user_id !== userId) {
-      // Check if user is admin
-      const userCheck = await db.query('SELECT role FROM users WHERE id = $1', [userId]);
-      if (userCheck.rows[0].role !== 'admin') {
-        return res.status(403).json({ message: 'Not authorized to delete this car' });
-      }
-    }
-
-    // Delete the car from the database
-    await db.query('DELETE FROM cars WHERE id = $1', [carId]);
-
-    return res.status(200).json({ success: true, message: 'Car listing deleted successfully' });
-  } catch (err) {
-    console.error('Error deleting car:', err.message);
-    return res.status(500).json({ message: 'Server error while deleting car listing' });
   }
 };

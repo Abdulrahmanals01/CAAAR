@@ -1,26 +1,25 @@
-// Global error handling middleware
+/**
+ * Global error handling middleware
+ * This provides consistent error responses across the application
+ */
 const errorHandler = (err, req, res, next) => {
-  console.error(err.stack);
-
-  // Multer file size error
-  if (err.code === 'LIMIT_FILE_SIZE') {
-    return res.status(400).json({
-      message: 'File too large. Maximum size is 5MB.'
-    });
+  console.error('Error occurred:', err);
+  
+  // Determine status code
+  const statusCode = err.statusCode || 500;
+  
+  // Format error response
+  const errorResponse = {
+    message: err.message || 'Something went wrong!',
+    error: process.env.NODE_ENV === 'development' ? err.stack : {}
+  };
+  
+  // If this is a validation error from express-validator
+  if (err.errors && Array.isArray(err.errors)) {
+    errorResponse.validationErrors = err.errors;
   }
-
-  // Custom API error with status code and message
-  if (err.statusCode) {
-    return res.status(err.statusCode).json({
-      message: err.message
-    });
-  }
-
-  // Default to 500 server error
-  res.status(500).json({
-    message: 'Server Error',
-    error: process.env.NODE_ENV === 'development' ? err.message : undefined
-  });
+  
+  res.status(statusCode).json(errorResponse);
 };
 
 module.exports = errorHandler;

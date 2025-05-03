@@ -23,4 +23,19 @@ instance.interceptors.request.use(
   }
 );
 
+// Add a response interceptor to handle common errors
+instance.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+  (error) => {
+    // Handle 401 errors (unauthorized - token expired)
+    if (error.response && error.response.status === 401) {
+      console.log('Authentication error - you may need to login again');
+      // You could redirect to login or refresh token here
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default instance;

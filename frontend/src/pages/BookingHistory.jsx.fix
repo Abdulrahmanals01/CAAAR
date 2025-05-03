@@ -1,7 +1,0 @@
-// Insert this near the top of BookingHistory.jsx, replacing the existing userRole/isRenter code
-import useAuth from '../hooks/useAuth';
-
-// Then replace existing userRole line:
-const { user } = useAuth();
-const userRole = localStorage.getItem('userRole') || user?.role;
-const isRenter = userRole === 'renter';

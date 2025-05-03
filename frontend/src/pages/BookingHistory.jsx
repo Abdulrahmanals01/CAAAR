@@ -34,6 +34,8 @@ const BookingHistory = () => {
           booking.status === 'completed'
         );
 
+        console.log('Completed bookings found:', completedBookings.length);
+        
         for (const booking of completedBookings) {
           await checkEligibility(booking.id);
         }
@@ -47,15 +49,22 @@ const BookingHistory = () => {
     }
   };
 
-  // Rest of the component remains the same
   const checkEligibility = async (bookingId) => {
     try {
+      console.log(`Checking rating eligibility for booking ${bookingId}`);
       const response = await checkRatingEligibility(bookingId);
+      
+      console.log('Eligibility check response:', response);
+      
       if (response.success) {
         setRatingEligibility(prev => ({
           ...prev,
           [bookingId]: response.data
         }));
+        
+        console.log(`Rating eligibility for booking ${bookingId}:`, response.data);
+      } else {
+        console.warn(`Error checking eligibility: ${response.error}`);
       }
     } catch (err) {
       console.error(`Error checking rating eligibility for booking ${bookingId}:`, err);
@@ -71,8 +80,9 @@ const BookingHistory = () => {
           booking.id === bookingId ? { ...booking, status } : booking
         ));
 
-        // If booking is completed, check rating eligibility
+        // If booking is completed, check rating eligibility immediately
         if (status === 'completed') {
+          console.log('Booking marked as completed, checking rating eligibility');
           await checkEligibility(bookingId);
         }
       } else {
@@ -101,6 +111,8 @@ const BookingHistory = () => {
     }
 
     setRatingBooking(null);
+    // Refresh bookings to ensure everything is up to date
+    fetchBookings();
   };
 
   const handleRatingCancel = () => {
@@ -184,7 +196,7 @@ const BookingHistory = () => {
   return (
     <div className="container mx-auto p-6">
       <h1 className="text-3xl font-bold mb-6">
-        {isRenter ? 'Booking Requests' : 'Booking Requests'}
+        {isRenter ? 'Your Bookings' : 'Booking Requests'}
       </h1>
 
       {error && (
@@ -266,140 +278,147 @@ const BookingHistory = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-6">
-          {getFilteredBookings().map(booking => (
-            <div key={booking.id} className="bg-white rounded-lg shadow-md overflow-hidden flex flex-col md:flex-row">       
-              <div className="md:w-1/3 bg-gray-200">
-                {booking.image ? (
-                  <img
-                    src={booking.image}
-                    alt={`${booking.brand} ${booking.model}`}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <div className="h-full w-full flex items-center justify-center">
-                    <p className="text-gray-500">No image available</p>
-                  </div>
-                )}
-              </div>
-              <div className="p-6 md:w-2/3">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h2 className="text-xl font-bold">
-                      {booking.brand} {booking.model} ({booking.year})
-                    </h2>
-                    <p className="text-gray-600 mt-1">
-                      {new Date(booking.start_date).toLocaleDateString()} to {new Date(booking.end_date).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusBadgeClass(booking.status)}`}>     
-                    {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-                  </span>
+          {getFilteredBookings().map(booking => {
+            // Check if rating is eligible
+            const eligibilityInfo = ratingEligibility[booking.id] || {};
+            const canRate = booking.status === 'completed' && eligibilityInfo.eligible === true;
+            const hasRated = eligibilityInfo.hasRated === true;
+            
+            return (
+              <div key={booking.id} className="bg-white rounded-lg shadow-md overflow-hidden flex flex-col md:flex-row">       
+                <div className="md:w-1/3 bg-gray-200">
+                  {booking.image ? (
+                    <img
+                      src={booking.image}
+                      alt={`${booking.brand} ${booking.model}`}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center">
+                      <p className="text-gray-500">No image available</p>
+                    </div>
+                  )}
                 </div>
-
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <h3 className="text-gray-500 text-sm">Total Price</h3>
-                    <p className="font-medium">${booking.total_price}</p>
-                  </div>
-                  <div>
-                    <h3 className="text-gray-500 text-sm">
-                      {isRenter ? 'Car Owner' : 'Renter'}
-                    </h3>
-                    <p className="font-medium">
-                      {isRenter ? (
-                        <Link to={`/profile/${booking.host_id}`} className="hover:underline text-blue-600">
-                          {booking.host_name}
-                        </Link>
-                      ) : (
-                        <Link to={`/profile/${booking.renter_id}`} className="hover:underline text-blue-600">
-                          {booking.renter_name}
-                        </Link>
-                      )}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Action buttons based on role and booking status */}
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {/* View car details button for both roles */}
-                  <Link
-                    to={`/cars/${booking.car_id}`}
-                    className="inline-block bg-blue-100 text-blue-700 py-1 px-3 rounded-full text-sm font-medium hover:bg-blue-200 transition"
-                  >
-                    View Car Details
-                  </Link>
-
-                  {/* Host actions */}
-                  {!isRenter && booking.status === 'pending' && (
-                    <>
-                      <button
-                        onClick={() => handleStatusUpdate(booking.id, 'accepted')}
-                        className="bg-green-600 text-white py-1 px-3 rounded-full text-sm font-medium hover:bg-green-700 transition"
-                      >
-                        Accept
-                      </button>
-                      <button
-                        onClick={() => handleStatusUpdate(booking.id, 'rejected')}
-                        className="bg-red-600 text-white py-1 px-3 rounded-full text-sm font-medium hover:bg-red-700 transition"
-                      >
-                        Reject
-                      </button>
-                    </>
-                  )}
-
-                  {/* Renter actions */}
-                  {isRenter && booking.status === 'pending' && (
-                    <button
-                      onClick={() => handleStatusUpdate(booking.id, 'canceled')}
-                      className="bg-gray-600 text-white py-1 px-3 rounded-full text-sm font-medium hover:bg-gray-700 transition"
-                    >
-                      Cancel
-                    </button>
-                  )}
-
-                  {/* Trip completed button ONLY for host when trip end date has passed */}
-                  {!isRenter && booking.status === 'accepted' && new Date(booking.end_date) < currentDate && (
-                    <button
-                      onClick={() => handleStatusUpdate(booking.id, 'completed')}
-                      className="bg-blue-600 text-white py-1 px-3 rounded-full text-sm font-medium hover:bg-blue-700 transition"
-                    >
-                      Mark as Completed
-                    </button>
-                  )}
-
-                  {/* Message button for both roles if booking is accepted or completed */}
-                  {(booking.status === 'accepted' || booking.status === 'completed') && (
-                    <Link
-                      to={isRenter ? `/messages/${booking.host_id}` : `/messages/${booking.renter_id}`}
-                      className="inline-block bg-purple-100 text-purple-700 py-1 px-3 rounded-full text-sm font-medium hover:bg-purple-200 transition"
-                    >
-                      Message
-                    </Link>
-                  )}
-
-                  {/* Rating button for completed bookings if eligible */}
-                  {booking.status === 'completed' && ratingEligibility[booking.id]?.eligible && (
-                    <button
-                      onClick={() => handleRateBooking(booking)}
-                      className="bg-yellow-500 text-white py-1 px-3 rounded-full text-sm font-medium hover:bg-yellow-600 transition"
-                    >
-                      Leave Rating
-                    </button>
-                  )}
-
-                  {/* Show if already rated */}
-                  {booking.status === 'completed' && ratingEligibility[booking.id]?.hasRated && (
-                    <span className="inline-flex items-center bg-green-100 text-green-800 py-1 px-3 rounded-full text-sm font-medium">
-                      <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                      </svg>
-                      Rated
+                <div className="p-6 md:w-2/3">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h2 className="text-xl font-bold">
+                        {booking.brand} {booking.model} ({booking.year})
+                      </h2>
+                      <p className="text-gray-600 mt-1">
+                        {new Date(booking.start_date).toLocaleDateString()} to {new Date(booking.end_date).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusBadgeClass(booking.status)}`}>     
+                      {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                     </span>
-                  )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <h3 className="text-gray-500 text-sm">Total Price</h3>
+                      <p className="font-medium">${booking.total_price}</p>
+                    </div>
+                    <div>
+                      <h3 className="text-gray-500 text-sm">
+                        {isRenter ? 'Car Owner' : 'Renter'}
+                      </h3>
+                      <p className="font-medium">
+                        {isRenter ? (
+                          <Link to={`/profile/${booking.host_id}`} className="hover:underline text-blue-600">
+                            {booking.host_name}
+                          </Link>
+                        ) : (
+                          <Link to={`/profile/${booking.renter_id}`} className="hover:underline text-blue-600">
+                            {booking.renter_name}
+                          </Link>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Action buttons based on role and booking status */}
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {/* View car details button for both roles */}
+                    <Link
+                      to={`/cars/${booking.car_id}`}
+                      className="inline-block bg-blue-100 text-blue-700 py-1 px-3 rounded-full text-sm font-medium hover:bg-blue-200 transition"
+                    >
+                      View Car Details
+                    </Link>
+
+                    {/* Host actions */}
+                    {!isRenter && booking.status === 'pending' && (
+                      <>
+                        <button
+                          onClick={() => handleStatusUpdate(booking.id, 'accepted')}
+                          className="bg-green-600 text-white py-1 px-3 rounded-full text-sm font-medium hover:bg-green-700 transition"
+                        >
+                          Accept
+                        </button>
+                        <button
+                          onClick={() => handleStatusUpdate(booking.id, 'rejected')}
+                          className="bg-red-600 text-white py-1 px-3 rounded-full text-sm font-medium hover:bg-red-700 transition"
+                        >
+                          Reject
+                        </button>
+                      </>
+                    )}
+
+                    {/* Renter actions */}
+                    {isRenter && booking.status === 'pending' && (
+                      <button
+                        onClick={() => handleStatusUpdate(booking.id, 'canceled')}
+                        className="bg-gray-600 text-white py-1 px-3 rounded-full text-sm font-medium hover:bg-gray-700 transition"
+                      >
+                        Cancel
+                      </button>
+                    )}
+
+                    {/* Trip completed button ONLY for host when trip end date has passed */}
+                    {!isRenter && booking.status === 'accepted' && new Date(booking.end_date) < currentDate && (
+                      <button
+                        onClick={() => handleStatusUpdate(booking.id, 'completed')}
+                        className="bg-blue-600 text-white py-1 px-3 rounded-full text-sm font-medium hover:bg-blue-700 transition"
+                      >
+                        Mark as Completed
+                      </button>
+                    )}
+
+                    {/* Message button for both roles if booking is accepted or completed */}
+                    {(booking.status === 'accepted' || booking.status === 'completed') && (
+                      <Link
+                        to={isRenter ? `/messages/${booking.host_id}` : `/messages/${booking.renter_id}`}
+                        className="inline-block bg-purple-100 text-purple-700 py-1 px-3 rounded-full text-sm font-medium hover:bg-purple-200 transition"
+                      >
+                        Message
+                      </Link>
+                    )}
+
+                    {/* Rating button for completed bookings if eligible */}
+                    {canRate && (
+                      <button
+                        onClick={() => handleRateBooking(booking)}
+                        className="bg-yellow-500 text-white py-1 px-3 rounded-full text-sm font-medium hover:bg-yellow-600 transition"
+                      >
+                        Leave Rating
+                      </button>
+                    )}
+
+                    {/* Show if already rated */}
+                    {booking.status === 'completed' && hasRated && (
+                      <span className="inline-flex items-center bg-green-100 text-green-800 py-1 px-3 rounded-full text-sm font-medium">
+                        <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        Rated
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

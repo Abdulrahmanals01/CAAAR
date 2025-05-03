@@ -1,0 +1,382 @@
+import React, { useState, useRef, useLayoutEffect } from 'react';
+import mapsLoader from '../../utils/mapsLoader';
+import { Link } from 'react-router-dom';
+
+const MapView = ({ cars, onCarSelect, searchLocation }) => {
+  const [error, setError] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [stats, setStats] = useState({
+    total: 0,
+    withLocation: 0,
+    validMarkers: 0
+  });
+
+  // Default center (Riyadh, Saudi Arabia)
+  const defaultCenter = { lat: 24.7136, lng: 46.6753 };
+
+  // Refs for DOM element and maps instances
+  const mapContainerRef = useRef(null);
+  const googleRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const markersRef = useRef([]);
+  const infoWindowsRef = useRef([]);
+  const listenersRef = useRef([]);
+  const activeInfoWindowRef = useRef(null);
+
+  // Function to geocode a location name to coordinates
+  const geocodeLocation = async (google, locationName) => {
+    if (!locationName) return null;
+
+    return new Promise((resolve) => {
+      const geocoder = new google.maps.Geocoder();
+
+      geocoder.geocode({ address: locationName + ', Saudi Arabia' }, (results, status) => {
+        if (status === 'OK' && results && results.length > 0) {
+          const location = results[0].geometry.location;
+          resolve({
+            lat: location.lat(),
+            lng: location.lng(),
+            formattedAddress: results[0].formatted_address
+          });
+        } else {
+          console.warn(`Geocoding failed for "${locationName}": ${status}`);
+          resolve(null);
+        }
+      });
+    });
+  };
+
+  // Format price to SAR
+  const formatPrice = (price) => {
+    return `${parseFloat(price).toLocaleString()} SAR`;
+  };
+
+  // Generate custom marker content with price
+  const createPriceMarker = (google, price) => {
+    // Format price
+    const displayPrice = price < 1000 ? price : Math.round(price);
+    
+    return {
+      path: google.maps.SymbolPath.CIRCLE,
+      fillColor: '#3b82f6', // Tailwind blue-500
+      fillOpacity: 1,
+      scale: 12,
+      strokeColor: '#ffffff',
+      strokeWeight: 2,
+      labelOrigin: new google.maps.Point(0, 0),
+      label: {
+        text: `${displayPrice}`,
+        color: '#ffffff',
+        fontSize: '11px',
+        fontWeight: 'bold'
+      }
+    };
+  };
+
+  // Use useLayoutEffect to ensure DOM operations happen before React renders
+  useLayoutEffect(() => {
+    // Flag to track component mount state
+    let isMounted = true;
+
+    const initializeMap = async () => {
+      if (!mapContainerRef.current) return;
+
+      try {
+        setIsLoading(true);
+
+        // Load Google Maps API
+        const google = await mapsLoader.load();
+        googleRef.current = google;
+
+        // Only proceed if component is still mounted
+        if (!isMounted || !mapContainerRef.current) return;
+
+        // Create map instance with improved UI options
+        const mapInstance = new google.maps.Map(mapContainerRef.current, {
+          center: defaultCenter,
+          zoom: 12,
+          fullscreenControl: true,
+          streetViewControl: true,
+          mapTypeControl: true,
+          mapTypeControlOptions: {
+            position: google.maps.ControlPosition.TOP_RIGHT,
+          },
+          zoomControl: true,
+          zoomControlOptions: {
+            position: google.maps.ControlPosition.RIGHT_TOP,
+          }
+        });
+        mapInstanceRef.current = mapInstance;
+
+        // Try to geocode the search location
+        let mapCenter = defaultCenter;
+        let geocodeResult = null;
+
+        if (searchLocation) {
+          const locationCoords = await geocodeLocation(google, searchLocation);
+          if (locationCoords) {
+            mapCenter = { lat: locationCoords.lat, lng: locationCoords.lng };
+            geocodeResult = locationCoords;
+
+            // Center the map on the geocoded location
+            mapInstance.setCenter(mapCenter);
+
+            // Add a special marker for the search location (optional)
+            const searchMarker = new google.maps.Marker({
+              position: mapCenter,
+              map: mapInstance,
+              title: locationCoords.formattedAddress || searchLocation,
+              icon: {
+                path: google.maps.SymbolPath.CIRCLE,
+                scale: 10,
+                fillColor: '#4285F4',
+                fillOpacity: 0.3,
+                strokeColor: '#4285F4',
+                strokeWeight: 2
+              }
+            });
+
+            // Store this marker for cleanup
+            markersRef.current.push(searchMarker);
+          }
+        }
+
+        // Create bounds object to fit all markers
+        const bounds = new google.maps.LatLngBounds();
+        let hasValidMarkers = false;
+
+        // Debug counters
+        let carsWithLocation = 0;
+        let validMarkers = 0;
+
+        // Clean up any previous markers
+        if (markersRef.current.length > 0) {
+          markersRef.current.forEach(marker => {
+            if (marker) marker.setMap(null);
+          });
+          markersRef.current = [];
+        }
+
+        if (infoWindowsRef.current.length > 0) {
+          infoWindowsRef.current = [];
+        }
+
+        // Process cars and create markers
+        cars.forEach(car => {
+          // Skip cars without complete data
+          if (!car.brand || !car.model || !car.price_per_day) {
+            return;
+          }
+
+          // Check if latitude and longitude exist
+          if (car.latitude !== undefined && car.longitude !== undefined &&
+              car.latitude !== null && car.longitude !== null) {
+            carsWithLocation++;
+
+            // Parse latitude and longitude to ensure they're numbers
+            const lat = parseFloat(car.latitude);
+            const lng = parseFloat(car.longitude);
+
+            // Skip if the values aren't valid numbers or are zero
+            if (isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) {
+              return;
+            }
+
+            // Create position object
+            const position = { lat, lng };
+
+            // Create custom price marker icon
+            const markerIcon = createPriceMarker(google, car.price_per_day);
+
+            // Create marker
+            const marker = new google.maps.Marker({
+              position,
+              map: mapInstance,
+              title: `${car.brand} ${car.model}`,
+              animation: google.maps.Animation.DROP,
+              icon: markerIcon,
+              optimized: true, // Better performance for multiple markers
+              zIndex: parseInt(car.price_per_day) // Higher priced cars show on top
+            });
+
+            validMarkers++;
+
+            // Create Turo-style info window content
+            const contentString = `
+              <div style="width: 220px; padding: 5px;">
+                <div style="font-weight: bold; font-size: 14px; margin-bottom: 3px;">
+                  ${car.brand} ${car.model} ${car.year}
+                </div>
+                <div style="color: #666; font-size: 12px; margin-bottom: 5px;">
+                  ${car.location || 'Location not specified'}
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                  <div style="font-weight: bold; color: #3b82f6;">
+                    ${formatPrice(car.price_per_day)}/day
+                  </div>
+                  <a href="/cars/${car.id}" style="text-decoration: none; background-color: #3b82f6; color: white; padding: 5px 10px; border-radius: 4px; font-size: 12px;">
+                    View Details
+                  </a>
+                </div>
+              </div>
+            `;
+
+            const infoWindow = new google.maps.InfoWindow({
+              content: contentString,
+              maxWidth: 300,
+              ariaLabel: `${car.brand} ${car.model}`
+            });
+
+            // Add click event to open info window
+            const clickListener = marker.addListener('click', () => {
+              if (!isMounted) return;
+
+              // Close any open info window
+              if (activeInfoWindowRef.current) {
+                activeInfoWindowRef.current.close();
+              }
+
+              // Open this info window
+              infoWindow.open(mapInstance, marker);
+              activeInfoWindowRef.current = infoWindow;
+
+              // Call the callback if provided
+              if (onCarSelect) onCarSelect(car);
+            });
+
+            // Add hover events for better UX
+            const mouseoverListener = marker.addListener('mouseover', () => {
+              if (!isMounted) return;
+              marker.setZIndex(1000); // Bring to front
+              marker.setAnimation(google.maps.Animation.BOUNCE);
+              // Stop bouncing after a short time
+              setTimeout(() => {
+                if (marker) marker.setAnimation(null);
+              }, 750);
+            });
+
+            const mouseoutListener = marker.addListener('mouseout', () => {
+              if (!isMounted) return;
+              marker.setZIndex(parseInt(car.price_per_day));
+              marker.setAnimation(null);
+            });
+
+            // Store references for cleanup
+            markersRef.current.push(marker);
+            infoWindowsRef.current.push(infoWindow);
+            listenersRef.current.push(
+              { target: marker, listener: clickListener },
+              { target: marker, listener: mouseoverListener },
+              { target: marker, listener: mouseoutListener }
+            );
+
+            // Extend bounds for map fitting
+            bounds.extend(position);
+            hasValidMarkers = true;
+          }
+        });
+
+        // Update stats
+        setStats({
+          total: cars.length,
+          withLocation: carsWithLocation,
+          validMarkers
+        });
+
+        // Fit map to markers if there are any
+        if (hasValidMarkers) {
+          // If we have more than one marker (or a single marker + search location)
+          if (validMarkers > 1 || (validMarkers === 1 && geocodeResult)) {
+            // Fit to all markers with appropriate padding
+            mapInstance.fitBounds(bounds, {
+              top: 50, right: 50, bottom: 50, left: 50
+            });
+
+            // Don't zoom in too far
+            const zoomListener = google.maps.event.addListener(mapInstance, 'idle', () => {
+              if (mapInstance.getZoom() > 16) {
+                mapInstance.setZoom(16);
+              }
+              google.maps.event.removeListener(zoomListener);
+            });
+
+            listenersRef.current.push({ target: mapInstance, listener: zoomListener });
+          } else {
+            // Single marker - set appropriate zoom level
+            mapInstance.setZoom(13);
+          }
+        } else if (geocodeResult) {
+          // We have a geocoded location but no markers - zoom appropriately
+          mapInstance.setCenter({ lat: geocodeResult.lat, lng: geocodeResult.lng });
+          mapInstance.setZoom(13);
+        } else {
+          // No valid markers and no geocoded location - default to Riyadh
+          mapInstance.setCenter(defaultCenter);
+          mapInstance.setZoom(10);
+        }
+
+        setIsLoading(false);
+      } catch (err) {
+        if (!isMounted) return;
+
+        console.error('Error initializing map:', err);
+        setError('Failed to load Google Maps. Please try again later.');
+        setIsLoading(false);
+      }
+    };
+
+    initializeMap();
+
+    // Cleanup function
+    return () => {
+      isMounted = false;
+
+      // Clean up listeners
+      if (listenersRef.current.length > 0 && googleRef.current) {
+        listenersRef.current.forEach(({ target, listener }) => {
+          if (target && googleRef.current.maps) {
+            googleRef.current.maps.event.removeListener(listener);
+          }
+        });
+        listenersRef.current = [];
+      }
+
+      // Clean up markers
+      if (markersRef.current.length > 0) {
+        markersRef.current.forEach(marker => {
+          if (marker) marker.setMap(null);
+        });
+        markersRef.current = [];
+      }
+
+      // Clean up info windows
+      infoWindowsRef.current = [];
+      activeInfoWindowRef.current = null;
+
+      // Clean up map instance (reference only)
+      mapInstanceRef.current = null;
+    };
+  }, [cars, onCarSelect, searchLocation]);
+
+  return (
+    <div className="w-full h-full relative">
+      {error && (
+        <div className="absolute top-0 left-0 right-0 bg-red-100 border-red-500 text-red-700 p-2 z-10">
+          {error}
+        </div>
+      )}
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-70 z-10">
+          <div className="bg-white p-3 rounded-lg shadow-md">Loading map...</div>
+        </div>
+      )}
+      <div
+        ref={mapContainerRef}
+        className="w-full h-full"
+        aria-label="Map showing car locations"
+      />
+    </div>
+  );
+};
+
+export default MapView;

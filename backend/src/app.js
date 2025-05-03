@@ -1,11 +1,13 @@
 const express = require('express');
 const cors = require('cors');
+const errorHandler = require("./middleware/errorHandler");
 const morgan = require('morgan');
 const helmet = require('helmet');
 const path = require('path');
 const http = require('http');
 const socketIo = require('socket.io');
 const jwt = require('jsonwebtoken');
+const startScheduler = require('./scheduleTasks');
 require('dotenv').config();
 
 // Initialize express app
@@ -13,7 +15,17 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: (origin, callback) => {
+      // Allow any localhost origin (any port)
+      const allowedOrigins = ['http://localhost:3000', 'http://127.0.0.1:3000'];
+      const isLocalhost = origin && (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:'));
+      
+      if (!origin || isLocalhost || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     methods: ['GET', 'POST'],
     credentials: true
   }
@@ -25,6 +37,9 @@ createCarRatingsTable();
 // Create admin tracking tables if they don't exist
 createAdminTrackingTables();
 
+// Start scheduler for auto-complete and auto-reject
+startScheduler();
+
 // Middleware
 app.use(helmet({
   contentSecurityPolicy: false, // Disable CSP for development
@@ -33,7 +48,17 @@ app.use(helmet({
 
 // Configure CORS for all routes
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+  origin: (origin, callback) => {
+    // Allow any localhost origin (any port)
+    const allowedOrigins = ['http://localhost:3000', 'http://127.0.0.1:3000'];
+    const isLocalhost = origin && (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:'));
+    
+    if (!origin || isLocalhost || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -140,10 +165,7 @@ io.on('connection', (socket) => {
 });
 
 // Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).send({ message: 'Something went wrong!' });
-});
+app.use(errorHandler);
 
 // Default route
 app.get('/', (req, res) => {

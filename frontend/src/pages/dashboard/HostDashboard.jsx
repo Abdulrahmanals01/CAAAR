@@ -46,12 +46,12 @@ const HostDashboard = () => {
       // Get all bookings - the backend should already filter for host's cars
       const bookingsResponse = await axios.get('http://localhost:5000/api/bookings/user', config);
       console.log('Raw bookings response:', bookingsResponse.data);
-      
+
       // For hosts, filter bookings to show only those for their cars
-      const hostBookings = bookingsResponse.data.filter(booking => 
+      const hostBookings = bookingsResponse.data.filter(booking =>
         booking.host_id === user.id || booking.car_user_id === user.id
       );
-      
+
       console.log('Filtered host bookings:', hostBookings);
       setBookingRequests(hostBookings);
 
@@ -69,7 +69,7 @@ const HostDashboard = () => {
   const calculateStatistics = (cars, bookings) => {
     const completedBookings = bookings.filter(b => b.status === 'completed');
     const totalEarnings = completedBookings.reduce((sum, booking) => sum + Number(booking.total_price), 0);
-    
+
     setStatistics({
       totalEarnings,
       totalBookings: bookings.length,
@@ -121,7 +121,7 @@ const HostDashboard = () => {
   const handleAcceptBooking = async (bookingId) => {
     try {
       const token = localStorage.getItem('token');
-      await axios.put(`http://localhost:5000/api/bookings/${bookingId}/status`, 
+      await axios.put(`http://localhost:5000/api/bookings/${bookingId}/status`,
         { status: 'accepted' },
         { headers: { 'Authorization': `Bearer ${token}` } }
       );
@@ -135,7 +135,7 @@ const HostDashboard = () => {
   const handleRejectBooking = async (bookingId) => {
     try {
       const token = localStorage.getItem('token');
-      await axios.put(`http://localhost:5000/api/bookings/${bookingId}/status`, 
+      await axios.put(`http://localhost:5000/api/bookings/${bookingId}/status`,
         { status: 'rejected' },
         { headers: { 'Authorization': `Bearer ${token}` } }
       );
@@ -149,7 +149,7 @@ const HostDashboard = () => {
   const handleCompleteBooking = async (bookingId) => {
     try {
       const token = localStorage.getItem('token');
-      await axios.put(`http://localhost:5000/api/bookings/${bookingId}/status`, 
+      await axios.put(`http://localhost:5000/api/bookings/${bookingId}/status`,
         { status: 'completed' },
         { headers: { 'Authorization': `Bearer ${token}` } }
       );
@@ -199,7 +199,7 @@ const HostDashboard = () => {
           className="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 inline-flex items-center"
         >
           <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />        
           </svg>
           List New Car
         </Link>
@@ -247,7 +247,7 @@ const HostDashboard = () => {
                 : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
           >
-            Past Trips <span className="ml-2 bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs">{counts.past}</span>  
+            Past Trips <span className="ml-2 bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs">{counts.past}</span>
           </button>
         </nav>
       </div>
@@ -256,7 +256,7 @@ const HostDashboard = () => {
       {displayedRequests.length === 0 ? (
         <div className="bg-gray-100 p-8 rounded-lg text-center">
           <h2 className="text-xl font-semibold mb-3">No bookings to display</h2>
-          {activeTab === 'pending' && <p>When someone wants to rent your car, their request will appear here.</p>}
+          {activeTab === 'pending' && <p>When someone wants to rent your car, their request will appear here.</p>}      
           {activeTab === 'current' && <p>Your accepted bookings will appear here.</p>}
           {activeTab === 'past' && <p>Your past, completed or rejected bookings will appear here.</p>}
         </div>
@@ -269,7 +269,7 @@ const HostDashboard = () => {
                   {booking.image ? (
                     <img
                       className="h-48 w-full object-cover md:w-48"
-                      src={booking.image.startsWith('http') ? booking.image : `http://localhost:5000/${booking.image}`}
+                      src={booking.image.startsWith('http') ? booking.image : `http://localhost:5000/${booking.image}`} 
                       alt={`${booking.brand} ${booking.model}`}
                     />
                   ) : (
@@ -281,7 +281,7 @@ const HostDashboard = () => {
                 <div className="p-6 w-full">
                   <div className="flex justify-between items-start">
                     <div>
-                      <h2 className="text-xl font-semibold">{booking.brand} {booking.model} ({booking.year})</h2>
+                      <h2 className="text-xl font-semibold">{booking.brand} {booking.model} ({booking.year})</h2>       
                       <p className="text-gray-600">{new Date(booking.start_date).toLocaleDateString()} to {new Date(booking.end_date).toLocaleDateString()}</p>
                     </div>
                     <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full

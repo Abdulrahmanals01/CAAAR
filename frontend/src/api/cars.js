@@ -1,31 +1,61 @@
-import axios from 'axios';
-
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-
-// Get API headers with auth token
-const getHeaders = (contentType = 'application/json') => {
-  const token = localStorage.getItem('token');
-  return {
-    headers: {
-      'Content-Type': contentType,
-      'Authorization': token ? `Bearer ${token}` : ''
-    }
-  };
-};
+import axios from '../utils/axiosConfig';
+import { getImageUrl } from '../utils/imageUtils';
 
 // Get all cars with optional filters
 export const getCars = async (filters = {}) => {
   try {
     // Convert filters object to query string
     const queryParams = new URLSearchParams();
+
+    // Add simple key-value filters
     Object.entries(filters).forEach(([key, value]) => {
-      if (value) {
+      if (value && !['features', 'colors'].includes(key)) {
         queryParams.append(key, value);
       }
     });
-    const response = await axios.get(`${API_URL}/api/cars?${queryParams.toString()}`);
-    return { success: true, data: response.data };
+
+    // Add features array if it exists
+    if (filters.features && filters.features.length > 0) {
+      queryParams.append('features', JSON.stringify(filters.features));
+    }
+
+    // Add colors array if it exists (new)
+    if (filters.colors && filters.colors.length > 0) {
+      queryParams.append('colors', JSON.stringify(filters.colors));
+    }
+
+    const response = await axios.get(`/api/cars?${queryParams.toString()}`);
+    console.log("Raw API response:", response.data);
+
+    // Process and standardize image URLs in the response
+    const carsWithFormattedImages = response.data.map(car => {
+      // Process the car object
+      let processedCar = { ...car };
+
+      // Format image URL if needed
+      if (car.image && !car.image_url) {
+        processedCar.image_url = getImageUrl(car.image, 'cars');
+      }
+
+      // Ensure latitude and longitude are parsed as numbers if they exist
+      if (car.latitude !== undefined && car.latitude !== null) {
+        processedCar.latitude = parseFloat(car.latitude);
+      }
+
+      if (car.longitude !== undefined && car.longitude !== null) {
+        processedCar.longitude = parseFloat(car.longitude);
+      }
+
+      return processedCar;
+    });
+
+    // Log processed data for debugging
+    console.log("Processed cars:", carsWithFormattedImages);
+    console.log("Cars with coordinates:", carsWithFormattedImages.filter(car => car.latitude && car.longitude).length); 
+
+    return { success: true, data: carsWithFormattedImages };
   } catch (error) {
+    console.error("Error in getCars:", error.response?.data || error.message);
     return {
       success: false,
       error: error.response?.data?.message || 'Error fetching cars'
@@ -36,8 +66,19 @@ export const getCars = async (filters = {}) => {
 // Get car by ID
 export const getCarById = async (carId) => {
   try {
-    const response = await axios.get(`${API_URL}/api/cars/${carId}`);
-    return { success: true, data: response.data };
+    const response = await axios.get(`/api/cars/${carId}`);
+
+    // Process and standardize image URL in the response
+    const car = response.data;
+    if (car.image && !car.image_url) {
+      car.image_url = getImageUrl(car.image, 'cars');
+    }
+
+    // Parse coordinates as numbers
+    if (car.latitude) car.latitude = parseFloat(car.latitude);
+    if (car.longitude) car.longitude = parseFloat(car.longitude);
+
+    return { success: true, data: car };
   } catch (error) {
     return {
       success: false,
@@ -49,23 +90,19 @@ export const getCarById = async (carId) => {
 // Create new car listing
 export const createCar = async (carData) => {
   try {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      return {
-        success: false,
-        error: 'Authentication required'
-      };
+    const response = await axios.post(`/api/cars`, carData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+
+    // Process and standardize image URL in the response
+    const newCar = response.data;
+    if (newCar.image && !newCar.image_url) {
+      newCar.image_url = getImageUrl(newCar.image, 'cars');
     }
 
-    const config = {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-        'Authorization': `Bearer ${token}`
-      }
-    };
-
-    const response = await axios.post(`${API_URL}/api/cars`, carData, config);
-    return { success: true, data: response.data };
+    return { success: true, data: newCar };
   } catch (error) {
     console.error('Car creation error:', error.response?.data || error.message);
     return {
@@ -78,23 +115,19 @@ export const createCar = async (carData) => {
 // Update car listing
 export const updateCar = async (carId, carData) => {
   try {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      return {
-        success: false,
-        error: 'Authentication required'
-      };
+    const response = await axios.put(`/api/cars/${carId}`, carData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+
+    // Process and standardize image URL in the response
+    const updatedCar = response.data;
+    if (updatedCar.image && !updatedCar.image_url) {
+      updatedCar.image_url = getImageUrl(updatedCar.image, 'cars');
     }
 
-    const config = {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-        'Authorization': `Bearer ${token}`
-      }
-    };
-
-    const response = await axios.put(`${API_URL}/api/cars/${carId}`, carData, config);
-    return { success: true, data: response.data };
+    return { success: true, data: updatedCar };
   } catch (error) {
     return {
       success: false,
@@ -106,27 +139,17 @@ export const updateCar = async (carId, carData) => {
 // Update car availability only
 export const updateCarAvailability = async (carId, availabilityData) => {
   try {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      return {
-        success: false,
-        error: 'Authentication required'
-      };
+    const response = await axios.patch(
+      `/api/cars/${carId}/availability`,
+      availabilityData
+    );
+
+    // Process and standardize image URL in the response
+    const updatedCar = response.data.car;
+    if (updatedCar.image && !updatedCar.image_url) {
+      updatedCar.image_url = getImageUrl(updatedCar.image, 'cars');
     }
 
-    const config = {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      }
-    };
-
-    const response = await axios.patch(
-      `${API_URL}/api/cars/${carId}/availability`, 
-      availabilityData, 
-      config
-    );
-    
     return { success: true, data: response.data };
   } catch (error) {
     return {
@@ -139,21 +162,7 @@ export const updateCarAvailability = async (carId, availabilityData) => {
 // Check if car has active bookings
 export const checkActiveBookings = async (carId) => {
   try {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      return {
-        success: false,
-        error: 'Authentication required'
-      };
-    }
-
-    const config = {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    };
-
-    const response = await axios.get(`${API_URL}/api/cars/${carId}/active-bookings`, config);
+    const response = await axios.get(`/api/cars/${carId}/active-bookings`);
     return { success: true, data: response.data };
   } catch (error) {
     return {
@@ -166,21 +175,7 @@ export const checkActiveBookings = async (carId) => {
 // Delete car listing
 export const deleteCar = async (carId) => {
   try {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      return {
-        success: false,
-        error: 'Authentication required'
-      };
-    }
-
-    const config = {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    };
-
-    await axios.delete(`${API_URL}/api/cars/${carId}`, config);
+    await axios.delete(`/api/cars/${carId}`);
     return { success: true };
   } catch (error) {
     return {
@@ -193,22 +188,22 @@ export const deleteCar = async (carId) => {
 // Get host's cars
 export const getHostCars = async () => {
   try {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      return {
-        success: false,
-        error: 'Authentication required'
-      };
-    }
+    const response = await axios.get(`/api/cars/owner`);
 
-    const config = {
-      headers: {
-        'Authorization': `Bearer ${token}`
+    // Process and standardize image URLs in the response
+    const carsWithFormattedImages = response.data.map(car => {
+      if (car.image && !car.image_url) {
+        car.image_url = getImageUrl(car.image, 'cars');
       }
-    };
 
-    const response = await axios.get(`${API_URL}/api/cars/owner`, config);
-    return { success: true, data: response.data };
+      // Parse coordinates as numbers
+      if (car.latitude) car.latitude = parseFloat(car.latitude);
+      if (car.longitude) car.longitude = parseFloat(car.longitude);
+
+      return car;
+    });
+
+    return { success: true, data: carsWithFormattedImages };
   } catch (error) {
     return {
       success: false,

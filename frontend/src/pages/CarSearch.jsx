@@ -1,22 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import { useLocation, Link, useNavigate } from 'react-router-dom';
-import axios from '../utils/axiosConfig';
+import React, { useState, useEffect, useRef } from 'react';
+import { useLocation, Link } from 'react-router-dom';
+import { getCars } from '../api/cars';
 import CarCard from '../components/cars/CarCard';
 import MapView from '../components/cars/MapView';
-import SearchBar from '../components/SearchBar';
+import CarFilter from '../components/cars/CarFilter';
 
 const CarSearch = () => {
   const location = useLocation();
-  const navigate = useNavigate();
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [viewMode, setViewMode] = useState('split'); // 'grid', 'map', or 'split'
   const [selectedCar, setSelectedCar] = useState(null);
+  const searchTimeoutRef = useRef(null);
   const [filters, setFilters] = useState({
-    priceMin: 0,
-    priceMax: 2000,
-    carType: 'all',
+    min_price: '',
+    max_price: '',
+    car_type: 'all',
+    min_year: '',
+    max_year: '',
+    colors: [],
     features: []
   });
 
@@ -29,6 +32,7 @@ const CarSearch = () => {
     endTime: '10:00'
   });
 
+  // This effect runs when the component mounts or when location.search changes
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
     const locationParam = queryParams.get('location');
@@ -37,15 +41,18 @@ const CarSearch = () => {
     const startTimeParam = queryParams.get('startTime');
     const endTimeParam = queryParams.get('endTime');
 
-    const updatedParams = {
-      location: locationParam || searchParams.location,
-      startDate: startDateParam || searchParams.startDate,
-      endDate: endDateParam || searchParams.endDate,
-      startTime: startTimeParam || searchParams.startTime,
-      endTime: endTimeParam || searchParams.endTime
-    };
-
-    setSearchParams(updatedParams);
+    // Only update if we have at least one parameter
+    if (locationParam || startDateParam || endDateParam || startTimeParam || endTimeParam) {
+      const newSearchParams = {
+        location: locationParam || '',
+        startDate: startDateParam || new Date().toISOString().split('T')[0],
+        endDate: endDateParam || new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        startTime: startTimeParam || '10:00',
+        endTime: endTimeParam || '10:00'
+      };
+      console.log('Updated search params from URL:', newSearchParams);
+      setSearchParams(newSearchParams);
+    }
   }, [location.search]);
 
   // Check window size on component mount and resize
@@ -60,98 +67,88 @@ const CarSearch = () => {
 
     // Add event listener
     window.addEventListener('resize', handleResize);
-    
+
     // Clean up
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Fetch cars when component mounts or search params change
+  // Fetch cars when component mounts or search params/filters change - WITH DEBOUNCE
   useEffect(() => {
-    const fetchCars = async () => {
+    // Set loading state
+    setLoading(true);
+    
+    // Clear any existing timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    // Create a new timeout to debounce the API call
+    searchTimeoutRef.current = setTimeout(async () => {
       try {
-        setLoading(true);
-        const response = await axios.get('/api/cars', { 
-          params: {
-            location: searchParams.location,
-            start_date: searchParams.startDate,
-            end_date: searchParams.endDate
-          }
-        });
+        console.log('Fetching cars with params:', { ...searchParams, ...filters });
         
-        // Add dummy coordinates for testing if not present
-        const carsWithCoordinates = response.data.map(car => {
-          if (!car.latitude || !car.longitude) {
-            // Generate random coordinates around Riyadh
-            const lat = 24.7136 + (Math.random() - 0.5) * 0.2;
-            const lng = 46.6753 + (Math.random() - 0.5) * 0.2;
-            return { ...car, latitude: lat.toString(), longitude: lng.toString() };
-          }
-          return car;
-        });
-        
-        setCars(carsWithCoordinates);
-        setError(null);
+        // Create a combined filter object with search params and filters
+        const searchFilters = {
+          location: searchParams.location,
+          start_date: searchParams.startDate,
+          end_date: searchParams.endDate,
+          min_price: filters.min_price,
+          max_price: filters.max_price,
+          min_year: filters.min_year,
+          max_year: filters.max_year,
+          car_type: filters.car_type === 'all' ? undefined : filters.car_type,
+          colors: filters.colors.length > 0 ? filters.colors : undefined,
+          features: filters.features.length > 0 ? filters.features : undefined
+        };
+
+        const response = await getCars(searchFilters);
+
+        if (response.success) {
+          // Process car data to ensure latitude and longitude are properly formatted
+          const processedCars = response.data.map(car => {
+            // Ensure latitude and longitude are present and valid numbers
+            if (car.latitude && car.longitude) {
+              return {
+                ...car,
+                latitude: parseFloat(car.latitude),
+                longitude: parseFloat(car.longitude)
+              };
+            }
+            return car;
+          });
+
+          console.log("Fetched cars:", processedCars.length);
+          console.log("Cars with valid location data:", processedCars.filter(car =>
+            car.latitude && car.longitude &&
+            !isNaN(car.latitude) && !isNaN(car.longitude)).length);
+
+          setCars(processedCars);
+          setError(null);
+        } else {
+          setError(response.error || 'Failed to load car listings');
+          setCars([]);
+        }
       } catch (err) {
         console.error('Error fetching cars:', err);
         setError('Failed to load car listings. Please try again later.');
+        setCars([]);
       } finally {
         setLoading(false);
       }
-    };
-
-    fetchCars();
-  }, [searchParams]);
-
-  // Handle filter changes
-  const handleFilterChange = (e) => {
-    const { name, value, type, checked } = e.target;
-
-    if (type === 'checkbox') {
-      // Handle feature checkboxes
-      if (checked) {
-        setFilters({
-          ...filters,
-          features: [...filters.features, name]
-        });
-      } else {
-        setFilters({
-          ...filters,
-          features: filters.features.filter(feature => feature !== name)
-        });
+    }, 500); // 500ms debounce
+    
+    // Cleanup function to clear the timeout when the component unmounts
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
       }
-    } else {
-      // Handle other filters
-      setFilters({
-        ...filters,
-        [name]: value
-      });
-    }
+    };
+  }, [searchParams, filters]);
+
+  // Handle filter changes from CarFilter component
+  const handleFilterChange = (newFilters) => {
+    setFilters(newFilters);
   };
-
-  // Apply filters to cars
-  const filteredCars = cars.filter(car => {
-    // Filter by price
-    const carPrice = parseFloat(car.price_per_day) || 0;
-    const minPrice = parseFloat(filters.priceMin) || 0;
-    const maxPrice = parseFloat(filters.priceMax) || Infinity;
-
-    if (carPrice < minPrice || carPrice > maxPrice) {
-      return false;
-    }
-
-    // Filter by car type
-    if (filters.carType !== 'all' && car.type !== filters.carType) {
-      return false;
-    }
-
-    // Filter by features (placeholder implementation)
-    if (filters.features.length > 0) {
-      // For a real app, you would check if the car has all selected features
-      return true;
-    }
-
-    return true;
-  });
 
   // Handle clicking on a car in the map
   const handleMapCarSelect = (car) => {
@@ -169,132 +166,16 @@ const CarSearch = () => {
   const formatDate = (dateString) => {
     if (!dateString) return '';
     const options = { year: 'numeric', month: '2-digit', day: '2-digit' };
-    return new Date(dateString).toLocaleDateString('en-US', options).replace(/(\d+)\/(\d+)\/(\d+)/, '$3-$1-$2');
+    return new Date(dateString).toLocaleDateString('en-US', options).replace(/(\d+)\/(\d+)\/(\d+)/, '$3-$1-$2');        
   };
 
   return (
     <div className="flex flex-col h-screen">
-      {/* Top search bar is already in the header */}
-
       {/* Main container */}
       <div className="flex flex-col md:flex-row h-full">
         {/* Left sidebar with filters */}
         <div className="md:w-64 bg-white border-r p-4 overflow-y-auto">
-          <h3 className="text-xl font-semibold mb-4">Filters</h3>
-          
-          {/* Price range */}
-          <div className="mb-6">
-            <h4 className="font-medium mb-2">Price range (SAR)</h4>
-            <div className="flex items-center space-x-2">
-              <input
-                type="number"
-                name="priceMin"
-                value={filters.priceMin}
-                onChange={handleFilterChange}
-                className="w-full p-2 border rounded-md"
-                min="0"
-                placeholder="0"
-              />
-              <span>to</span>
-              <input
-                type="number"
-                name="priceMax"
-                value={filters.priceMax}
-                onChange={handleFilterChange}
-                className="w-full p-2 border rounded-md"
-                min="0"
-                placeholder="2000"
-              />
-            </div>
-          </div>
-
-          {/* Car type */}
-          <div className="mb-6">
-            <h4 className="font-medium mb-2">Car type</h4>
-            <select
-              name="carType"
-              value={filters.carType}
-              onChange={handleFilterChange}
-              className="w-full p-2 border rounded-md"
-            >
-              <option value="all">All types</option>
-              <option value="sedan">Sedan</option>
-              <option value="suv">SUV</option>
-              <option value="truck">Truck</option>
-              <option value="sports">Sports</option>
-              <option value="luxury">Luxury</option>
-            </select>
-          </div>
-
-          {/* Features */}
-          <div className="mb-4">
-            <h4 className="font-medium mb-2">Features</h4>
-            <div className="space-y-2">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  name="air_conditioning"
-                  checked={filters.features.includes('air_conditioning')}
-                  onChange={handleFilterChange}
-                  className="mr-2"
-                />
-                Air conditioning
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  name="bluetooth"
-                  checked={filters.features.includes('bluetooth')}
-                  onChange={handleFilterChange}
-                  className="mr-2"
-                />
-                Bluetooth
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  name="navigation"
-                  checked={filters.features.includes('navigation')}
-                  onChange={handleFilterChange}
-                  className="mr-2"
-                />
-                Navigation system
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  name="child_seat"
-                  checked={filters.features.includes('child_seat')}
-                  onChange={handleFilterChange}
-                  className="mr-2"
-                />
-                Child seat
-              </label>
-            </div>
-          </div>
-
-          {/* Mobile view toggle */}
-          <div className="md:hidden mb-6">
-            <h4 className="font-medium mb-2">View Mode</h4>
-            <div className="flex border rounded-md overflow-hidden">
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`flex-1 py-2 px-3 text-center ${
-                  viewMode === 'grid' ? 'bg-blue-600 text-white' : 'bg-white'
-                }`}
-              >
-                List
-              </button>
-              <button
-                onClick={() => setViewMode('map')}
-                className={`flex-1 py-2 px-3 text-center ${
-                  viewMode === 'map' ? 'bg-blue-600 text-white' : 'bg-white'
-                }`}
-              >
-                Map
-              </button>
-            </div>
-          </div>
+          <CarFilter onFilterChange={handleFilterChange} />
         </div>
 
         {/* Main content area */}
@@ -304,17 +185,17 @@ const CarSearch = () => {
             <div className={`${viewMode === 'split' ? 'md:w-1/2 border-r' : 'w-full'} overflow-y-auto`}>
               <div className="p-4 border-b">
                 <h2 className="text-xl font-semibold">
-                  {filteredCars.length} {filteredCars.length === 1 ? 'car' : 'cars'} available
+                  {cars.length} {cars.length === 1 ? 'car' : 'cars'} available
                 </h2>
                 <p className="text-gray-600 text-sm">
-                  {searchParams.location ? `in ${searchParams.location}` : ''} 
+                  {searchParams.location ? `in ${searchParams.location}` : ''}
                   {searchParams.startDate && searchParams.endDate ? ` • From ${formatDate(searchParams.startDate)} to ${formatDate(searchParams.endDate)}` : ''}
                 </p>
               </div>
 
               {loading ? (
                 <div className="flex justify-center items-center h-64">
-                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>     
                 </div>
               ) : error ? (
                 <div className="p-4">
@@ -322,7 +203,7 @@ const CarSearch = () => {
                     <p>{error}</p>
                   </div>
                 </div>
-              ) : filteredCars.length === 0 ? (
+              ) : cars.length === 0 ? (
                 <div className="p-4">
                   <div className="bg-white p-6 rounded-lg shadow-md text-center">
                     <h3 className="text-xl font-semibold mb-2">No cars found</h3>
@@ -331,7 +212,7 @@ const CarSearch = () => {
                 </div>
               ) : (
                 <div className="divide-y">
-                  {filteredCars.map((car) => (
+                  {cars.map((car) => (
                     <div
                       key={car.id}
                       id={`car-${car.id}`}
@@ -357,11 +238,15 @@ const CarSearch = () => {
             <div className={`${viewMode === 'split' ? 'md:w-1/2' : 'w-full'} h-full relative`}>
               {loading ? (
                 <div className="flex items-center justify-center h-full bg-gray-100">
-                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>     
                 </div>
               ) : (
                 <>
-                  <MapView cars={filteredCars} onCarSelect={handleMapCarSelect} />
+                  <MapView
+                    cars={cars}
+                    onCarSelect={handleMapCarSelect}
+                    searchLocation={searchParams.location}
+                  />
                   <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white bg-opacity-75 px-3 py-1 rounded-full text-sm">
                     Use ctrl + scroll to zoom the map
                   </div>
@@ -383,7 +268,7 @@ const CarSearch = () => {
             title="List View"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" /> 
             </svg>
           </button>
           <button

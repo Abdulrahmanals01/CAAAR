@@ -32,8 +32,8 @@ const SearchBar = () => {
       endTime: searchParams.endTime
     }).toString();
 
-    // Navigate to search results page with query parameters
-    navigate(`/cars/search?${queryString}`);
+    // Navigate to cars page with query parameters (changed from /cars/search to /cars)
+    navigate(`/cars?${queryString}`);
   };
 
   return (
@@ -66,7 +66,7 @@ const SearchBar = () => {
                 name="startDate"
                 value={searchParams.startDate}
                 onChange={handleInputChange}
-                className="w-full p-3 border border-gray-300 rounded-l-md focus:ring-blue-500 focus:border-blue-500"
+                className="w-full p-3 border border-gray-300 rounded-l-md focus:ring-blue-500 focus:border-blue-500"    
                 required
               />
               <select
@@ -94,7 +94,7 @@ const SearchBar = () => {
                 name="endDate"
                 value={searchParams.endDate}
                 onChange={handleInputChange}
-                className="w-full p-3 border border-gray-300 rounded-l-md focus:ring-blue-500 focus:border-blue-500"
+                className="w-full p-3 border border-gray-300 rounded-l-md focus:ring-blue-500 focus:border-blue-500"    
                 min={searchParams.startDate}
                 required
               />

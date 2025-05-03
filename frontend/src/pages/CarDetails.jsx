@@ -5,6 +5,7 @@ import { getCarRatings } from '../api/ratings';
 import useAuth from '../hooks/useAuth';
 import BookingForm from '../components/bookings/BookingForm';
 import StarRating from '../components/common/StarRating';
+import { getImageUrl } from '../utils/imageUtils';
 
 const CarDetails = () => {
   const { id } = useParams();
@@ -25,9 +26,21 @@ const CarDetails = () => {
       try {
         const response = await getCarById(id);
         if (response.success) {
-          setCar(response.data);
+          // Ensure image URL is properly formatted
+          const carData = response.data;
+          if (carData.image && !carData.image_url) {
+            carData.image_url = getImageUrl(carData.image, 'cars');
+          }
+          
+          // Ensure host_rating is a number
+          if (carData.host_rating) {
+            carData.host_rating = parseFloat(carData.host_rating);
+          }
+          
+          setCar(carData);
+
           // Check if the current user is the owner of this car
-          setIsOwner(response.data.user_id === userId);
+          setIsOwner(carData.user_id === userId);
 
           // Fetch car ratings
           const ratingsResponse = await getCarRatings(id);
@@ -47,7 +60,6 @@ const CarDetails = () => {
     fetchCarDetails();
   }, [id, userId]);
 
-  // Rest of the component remains the same
   if (loading) {
     return (
       <div className="container mx-auto p-6 flex justify-center">
@@ -170,7 +182,8 @@ const CarDetails = () => {
               <div>
                 <div className="grid grid-cols-2 gap-4 mb-6">
                   <div className="flex items-center">
-                    <svg className="w-6 h-6 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">       
+                    <svg className="w-6 h-6 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">  
+
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                     <div>
@@ -179,8 +192,9 @@ const CarDetails = () => {
                     </div>
                   </div>
                   <div className="flex items-center">
-                    <svg className="w-6 h-6 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">       
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />   
+                    <svg className="w-6 h-6 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">  
+
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                     </svg>
                     <div>
                       <h3 className="font-medium">Mileage</h3>
@@ -221,7 +235,7 @@ const CarDetails = () => {
                     </div>
                   </div>
                   {isOwner && (
-                    <div className="mt-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded">
+                    <div className="mt-4 bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded">       
                       <p>This is your own car listing. You cannot book your own car.</p>
                     </div>
                   )}
@@ -234,19 +248,22 @@ const CarDetails = () => {
                 <h2 className="text-xl font-semibold mb-4">Car Features</h2>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex items-center">
-                    <svg className="w-6 h-6 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">       
+                    <svg className="w-6 h-6 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">  
+
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                     <span>{car.color} exterior</span>
                   </div>
                   <div className="flex items-center">
-                    <svg className="w-6 h-6 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">       
+                    <svg className="w-6 h-6 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">  
+
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                     <span>{car.mileage} km mileage</span>
                   </div>
                   <div className="flex items-center">
-                    <svg className="w-6 h-6 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">       
+                    <svg className="w-6 h-6 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">  
+
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                     <span>Model year: {car.year}</span>

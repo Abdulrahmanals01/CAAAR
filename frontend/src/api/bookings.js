@@ -1,19 +1,9 @@
-import axios from 'axios';
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+import axios from '../utils/axiosConfig';
+
 // Create a new booking
 export const createBooking = async (bookingData) => {
   try {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
-    const config = {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      }
-    };
-    const response = await axios.post(`${API_URL}/api/bookings`, bookingData, config);
+    const response = await axios.post('/api/bookings', bookingData);
     return { success: true, data: response.data };
   } catch (error) {
     return {
@@ -22,19 +12,11 @@ export const createBooking = async (bookingData) => {
     };
   }
 };
+
 // Get user's bookings
 export const getUserBookings = async () => {
   try {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
-    const config = {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    };
-    const response = await axios.get(`${API_URL}/api/bookings/user`, config);
+    const response = await axios.get('/api/bookings/user');
     return { success: true, data: response.data };
   } catch (error) {
     return {
@@ -43,23 +25,13 @@ export const getUserBookings = async () => {
     };
   }
 };
+
 // Update booking status (accept/reject/cancel)
 export const updateBookingStatus = async (bookingId, status) => {
   try {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      return { success: false, error: 'Authentication required' };
-    }
-    const config = {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      }
-    };
     const response = await axios.put(
-      `${API_URL}/api/bookings/${bookingId}/status`,
-      { status },
-      config
+      `/api/bookings/${bookingId}/status`,
+      { status }
     );
     return { success: true, data: response.data };
   } catch (error) {

@@ -9,7 +9,6 @@ const carsDir = path.join(__dirname, '../../uploads/cars');
 if (!fs.existsSync(licensesDir)) {
   fs.mkdirSync(licensesDir, { recursive: true });
 }
-
 if (!fs.existsSync(carsDir)) {
   fs.mkdirSync(carsDir, { recursive: true });
 }
@@ -17,7 +16,7 @@ if (!fs.existsSync(carsDir)) {
 // Configure storage
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    if (file.fieldname === 'license_image') {
+    if (file.fieldname === 'licenseImage') {
       cb(null, licensesDir);
     } else if (file.fieldname === 'image') {
       cb(null, carsDir);
@@ -27,7 +26,8 @@ const storage = multer.diskStorage({
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    const fieldPrefix = file.fieldname === 'licenseImage' ? 'license_image' : file.fieldname;
+    cb(null, fieldPrefix + '-' + uniqueSuffix + path.extname(file.originalname));
   }
 });
 
