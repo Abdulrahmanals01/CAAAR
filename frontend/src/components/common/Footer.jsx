@@ -68,8 +68,8 @@ const Footer = () => {
             </ul>
             <div className="mt-6">
               <h3 className="text-xl font-bold mb-4">Contact Us</h3>
-              <p className="text-gray-300">Email: info@sayarati.sa</p>
-              <p className="text-gray-300">Phone: +966 12 345 6789</p>
+              <p className="text-gray-300">Email: AbdulrahmanAlsaadan01@gmail.com</p>
+              <p className="text-gray-300">Phone: 0507083383</p>
             </div>
           </div>
         </div>

@@ -50,7 +50,7 @@ module.exports = {
   sendEmail: async (options) => {
     try {
       const mailOptions = {
-        from: process.env.EMAIL_FROM || 'support@sayarati.com',
+        from: process.env.EMAIL_FROM || 'AbdulrahmanAlsaadan01@gmail.com',
         ...options
       };
 
@@ -96,7 +96,7 @@ module.exports = {
 
       // Email to support team about new inquiry
       const supportMailOptions = {
-        to: process.env.SUPPORT_EMAIL || 'support@sayarati.com',
+        to: process.env.SUPPORT_EMAIL || 'AbdulrahmanAlsaadan01@gmail.com',
         subject: `New Support Request: ${subject} [${ticketId}]`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">

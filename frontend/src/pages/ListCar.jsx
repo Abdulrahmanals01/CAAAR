@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createCar } from '../api/cars';
 import LocationPicker from '../components/cars/LocationPicker';
@@ -38,7 +38,11 @@ const ListCar = () => {
   const [imagePreview, setImagePreview] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const [success, setSuccess] = useState(false);
+  
+  // Refs for scrolling to errors
+  const imageSection = useRef(null);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -55,6 +59,9 @@ const ListCar = () => {
       const selectedImage = e.target.files[0];
       setImage(selectedImage);
 
+      // Clear any previous image errors
+      setFieldErrors(prev => ({...prev, image: null}));
+
       // Create image preview
       const reader = new FileReader();
       reader.onload = () => {
@@ -63,6 +70,13 @@ const ListCar = () => {
       reader.readAsDataURL(selectedImage);
     }
   };
+  
+  // Effect to scroll to errors
+  useEffect(() => {
+    if (fieldErrors.image && imageSection.current) {
+      imageSection.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [fieldErrors]);
 
   // Memoize the location select handler to prevent unnecessary re-renders
   const handleLocationSelect = useCallback((locationData) => {
@@ -79,17 +93,25 @@ const ListCar = () => {
     e.preventDefault();
     setLoading(true);
     setError('');
-
+    setFieldErrors({});
+    
     // Validation
+    let hasErrors = false;
+    const newFieldErrors = {};
+    
     if (!formData.latitude || !formData.longitude) {
       setError('Please select a location on the map');
-      setLoading(false);
-      return;
+      hasErrors = true;
     }
     
     // Image validation
     if (!image) {
-      setError('Please upload a photo of your car');
+      newFieldErrors.image = 'Please upload a photo of your car';
+      hasErrors = true;
+    }
+    
+    if (hasErrors) {
+      setFieldErrors(newFieldErrors);
       setLoading(false);
       return;
     }
@@ -406,9 +428,11 @@ const ListCar = () => {
           </div>
 
           {/* Car Images */}
-          <div>
-            <h2 className="text-xl font-semibold mb-4">Car Photos</h2>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+          <div id="image-section" ref={imageSection}>
+            <h2 className="text-xl font-semibold mb-4">
+              Car Photos <span className="text-red-500">*</span>
+            </h2>
+            <div className={`border-2 border-dashed rounded-lg p-6 text-center ${!image && (fieldErrors.image || error) ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}>
               <input
                 type="file"
                 id="car-image"
@@ -423,17 +447,22 @@ const ListCar = () => {
               >
                 {!imagePreview ? (
                   <>
-                    <div className="mx-auto w-12 h-12 text-gray-400">
+                    <div className={`mx-auto w-12 h-12 ${!image && (fieldErrors.image || error) ? 'text-red-400' : 'text-gray-400'}`}>
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">       
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
                     </div>
-                    <p className="mt-2 text-sm text-gray-500">
+                    <p className={`mt-2 text-sm ${!image && (fieldErrors.image || error) ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>
                       Click to upload a photo of your car (Required, Max size: 5MB)
                     </p>
                     <p className="mt-1 text-xs text-gray-400">
                       JPG, PNG or GIF
                     </p>
+                    {!image && (fieldErrors.image || error) && (
+                      <p className="mt-2 text-sm text-red-600 font-medium">
+                        {fieldErrors.image || "Please upload an image of your car to continue"}
+                      </p>
+                    )}
                   </>
                 ) : (
                   <div className="relative">

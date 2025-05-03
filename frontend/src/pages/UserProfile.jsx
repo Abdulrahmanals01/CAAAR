@@ -14,7 +14,7 @@ const UserProfile = () => {
   const [ratings, setRatings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('about');
+  const [activeTab, setActiveTab] = useState('about'); // Only options now are 'about' and 'reviews'
 
   useEffect(() => {
     const fetchData = async () => {
@@ -77,7 +77,7 @@ const UserProfile = () => {
     );
   }
 
-  const { user, stats, cars } = profile;
+  const { user, stats } = profile;
   const isHost = user.role === 'host';
   const isCurrentUser = currentUser && currentUser.id === parseInt(userId);
   const memberSince = formatDistanceToNow(new Date(user.created_at), { addSuffix: true });
@@ -174,18 +174,6 @@ const UserProfile = () => {
                 >
                   REVIEWS ({stats.totalRatings})
                 </button>
-                {isHost && (
-                  <button
-                    onClick={() => setActiveTab('cars')}
-                    className={`py-4 px-6 font-medium text-sm ${
-                      activeTab === 'cars'
-                        ? 'border-b-2 border-blue-500 text-blue-600'
-                        : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    {user.name.toUpperCase()}'S VEHICLES
-                  </button>
-                )}
               </nav>
             </div>
 
@@ -318,63 +306,6 @@ const UserProfile = () => {
                 </div>
               )}
               
-              {/* Cars Tab (for hosts) */}
-              {activeTab === 'cars' && isHost && (
-                <div>
-                  <h2 className="text-xl font-semibold mb-4">
-                    {user.name}'s Vehicles
-                  </h2>
-                  
-                  {cars.length === 0 ? (
-                    <div className="bg-gray-50 p-6 rounded-lg text-center">
-                      <p className="text-gray-500">No cars listed yet</p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {cars.map(car => (
-                        <div key={car.id} className="bg-white border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition">
-                          <div className="h-48 bg-gray-200">
-                            {car.image ? (
-                              <img 
-                                src={car.image} 
-                                alt={`${car.brand} ${car.model}`}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <span className="text-gray-400">No image</span>
-                              </div>
-                            )}
-                          </div>
-                          <div className="p-4">
-                            <h3 className="font-bold text-lg mb-1">
-                              {car.brand} {car.model} ({car.year})
-                            </h3>
-                            <div className="flex items-center mb-2">
-                              <StarRating rating={car.average_rating || 0} size="sm" />
-                              <span className="ml-1 text-sm text-gray-600">
-                                ({car.average_rating && typeof car.average_rating === 'number' ? car.average_rating.toFixed(1) : '0'})
-                              </span>
-                            </div>
-                            <p className="text-gray-700 mb-2">
-                              ${car.price_per_day}/day • {car.location}
-                            </p>
-                            <p className="text-sm text-gray-500">
-                              {car.total_bookings || 0} {car.total_bookings === 1 ? 'trip' : 'trips'}
-                            </p>
-                            <Link 
-                              to={`/cars/${car.id}`}
-                              className="mt-3 inline-block bg-blue-600 hover:bg-blue-700 text-white py-1 px-4 rounded text-sm"
-                            >
-                              View Details
-                            </Link>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           </div>
         </div>

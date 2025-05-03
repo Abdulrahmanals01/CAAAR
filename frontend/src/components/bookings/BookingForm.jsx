@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createBooking } from '../../api/bookings';
 import useAuth from '../../hooks/useAuth';
+import { formatCurrency } from '../../utils/dataFormatter';
 
 const BookingForm = ({ car }) => {
   const navigate = useNavigate();
@@ -150,12 +151,12 @@ const BookingForm = ({ car }) => {
           <h3 className="text-lg font-semibold mb-2">Price Details</h3>
           <div className="flex justify-between mb-2">
             <span className="text-gray-600">Price per day:</span>
-            <span className="font-medium">${car.price_per_day} / day</span>
+            <span className="font-medium">{formatCurrency(car.price_per_day)} / day</span>
           </div>
           <div className="border-t border-gray-300 my-2"></div>
           <div className="flex justify-between text-lg font-bold">
             <span>Total Price:</span>
-            <span>${totalPrice.toFixed(2)}</span>
+            <span>{formatCurrency(totalPrice)}</span>
           </div>
         </div>
 

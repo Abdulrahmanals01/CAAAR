@@ -219,7 +219,7 @@ const Support = () => {
             </div>
             <div className="ml-3">
               <h3 className="font-medium">Email</h3>
-              <p className="text-gray-600">support@sayarati.com</p>
+              <p className="text-gray-600">AbdulrahmanAlsaadan01@gmail.com</p>
             </div>
           </div>
 

@@ -4,6 +4,7 @@ import { getUserBookings, updateBookingStatus } from '../api/bookings';
 import { checkRatingEligibility } from '../api/ratings';
 import useAuth from '../hooks/useAuth';
 import StarRating from '../components/common/StarRating';
+import { formatCurrency } from '../utils/dataFormatter';
 
 const BookingHistory = () => {
   const [bookings, setBookings] = useState([]);
@@ -282,7 +283,7 @@ const BookingHistory = () => {
                   <div className="grid grid-cols-2 gap-4 mb-4">
                     <div>
                       <h3 className="text-gray-500 text-sm">Total Price</h3>
-                      <p className="font-medium">${booking.total_price}</p>
+                      <p className="font-medium">{formatCurrency(booking.total_price)}</p>
                     </div>
                     <div>
                       <h3 className="text-gray-500 text-sm">

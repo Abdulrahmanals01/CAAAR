@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import StarRating from '../common/StarRating';
+import { formatCurrency } from '../../utils/dataFormatter';
 
 const CarCard = ({ car }) => {
   // Function to handle image URLs
@@ -38,7 +39,7 @@ const CarCard = ({ car }) => {
         />
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-2">
           <div className="flex items-center justify-between">
-            <span className="text-white font-bold">${car.price_per_day}/day</span>
+            <span className="text-white font-bold">{formatCurrency(car.price_per_day).replace('.00', '')}/day</span>
             {car.rating && (
               <div className="flex items-center">
                 <StarRating rating={car.rating} size="sm" />

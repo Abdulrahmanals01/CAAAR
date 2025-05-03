@@ -6,6 +6,7 @@ import useAuth from '../hooks/useAuth';
 import BookingForm from '../components/bookings/BookingForm';
 import StarRating from '../components/common/StarRating';
 import { getImageUrl } from '../utils/imageUtils';
+import { formatCurrency } from '../utils/dataFormatter';
 
 const CarDetails = () => {
   const { id } = useParams();
@@ -403,7 +404,7 @@ const CarDetails = () => {
                   <div className="bg-gray-100 p-4 rounded-lg mb-4">
                     <div className="flex justify-between items-center">
                       <span className="text-gray-600">Price</span>
-                      <span className="text-2xl font-bold">${car.price_per_day}/day</span>
+                      <span className="text-2xl font-bold">{formatCurrency(car.price_per_day).replace('.00', '')}/day</span>
                     </div>
                   </div>
                   <BookingForm car={car} isHost={isHost} />

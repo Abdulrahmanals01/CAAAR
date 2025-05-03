@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import useAuth from '../../hooks/useAuth';
+import { deleteCar, checkActiveBookings } from '../../api/cars';
 
 const HostDashboard = () => {
   const [activeTab, setActiveTab] = useState('pending');
@@ -9,6 +10,8 @@ const HostDashboard = () => {
   const [bookingRequests, setBookingRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [statusMessage, setStatusMessage] = useState('');
+  const [actionInProgress, setActionInProgress] = useState(false);
   const [statistics, setStatistics] = useState({
     totalEarnings: 0,
     totalBookings: 0,
@@ -101,20 +104,41 @@ const HostDashboard = () => {
     if (!window.confirm('Are you sure you want to delete this listing?')) {
       return;
     }
-
+    
+    setActionInProgress(true);
+    setStatusMessage('');
+    
     try {
-      const token = localStorage.getItem('token');
-      await axios.delete(`http://localhost:5000/api/cars/${carId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      setCurrentListings(currentListings.filter(car => car.id !== carId));
-      alert('Car listing deleted successfully');
+      // First check if car has active bookings
+      const activeBookingsCheck = await checkActiveBookings(carId);
+      
+      if (!activeBookingsCheck.success) {
+        setStatusMessage(activeBookingsCheck.error || 'Error checking active bookings.');
+        setActionInProgress(false);
+        return;
+      }
+      
+      if (activeBookingsCheck.data.hasActiveBookings) {
+        setStatusMessage('Cannot delete car with active bookings. You must wait until all current bookings are completed.');
+        setActionInProgress(false);
+        return;
+      }
+      
+      // Proceed with deletion if no active bookings
+      const response = await deleteCar(carId);
+      
+      if (response.success) {
+        setStatusMessage('Car listing deleted successfully!');
+        // Remove the car from state
+        setCurrentListings(currentListings.filter(car => car.id !== carId));
+      } else {
+        setStatusMessage(response.error || 'Failed to delete car. Please try again.');
+      }
     } catch (err) {
       console.error('Error deleting car:', err);
-      alert('Failed to delete car listing: ' + (err.response?.data?.message || err.message));
+      setStatusMessage('An unexpected error occurred while deleting the car. Please try again.');
+    } finally {
+      setActionInProgress(false);
     }
   };
 
@@ -169,6 +193,12 @@ const HostDashboard = () => {
       {error && (
         <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert">
           <p>{error}</p>
+        </div>
+      )}
+      
+      {statusMessage && (
+        <div className={`p-4 mb-6 rounded-md ${statusMessage.includes('success') ? 'bg-green-100 text-green-700 border-l-4 border-green-500' : 'bg-yellow-100 text-yellow-700 border-l-4 border-yellow-500'}`}>
+          <p>{statusMessage}</p>
         </div>
       )}
 
@@ -409,9 +439,14 @@ const HostDashboard = () => {
                   </Link>
                   <button
                     onClick={() => handleDeleteCar(car.id)}
-                    className="bg-red-500 text-center text-white px-3 py-1 rounded text-sm hover:bg-red-600"
+                    disabled={actionInProgress}
+                    className={`text-center text-white px-3 py-1 rounded text-sm ${
+                      actionInProgress 
+                        ? 'bg-gray-400 cursor-not-allowed' 
+                        : 'bg-red-500 hover:bg-red-600'
+                    }`}
                   >
-                    Delete
+                    {actionInProgress ? 'Processing...' : 'Delete'}
                   </button>
                 </div>
               </div>
