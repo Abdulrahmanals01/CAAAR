@@ -59,7 +59,7 @@ exports.getAllCars = async (req, res) => {
     }
     if (max_year) {
       whereClause.push(`year <= $${valueIndex}`);
-      values.push(max_price); // FIX: This should be max_year
+      values.push(max_year); // Fixed parameter name
       valueIndex++;
     }
 

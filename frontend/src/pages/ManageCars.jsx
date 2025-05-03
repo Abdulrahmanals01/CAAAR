@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getImageUrl } from '../utils/imageUtils';
 import { Link } from 'react-router-dom';
 import { getHostCars, deleteCar, checkActiveBookings } from '../api/cars';
 import EditAvailabilityModal from '../components/cars/EditAvailabilityModal';

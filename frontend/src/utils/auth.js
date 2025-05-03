@@ -1,75 +1,72 @@
-// Token management utilities
-const TOKEN_KEY = 'token';
-const ROLE_KEY = 'userRole';
-const NAME_KEY = 'userName';
-const ID_KEY = 'userId';
+/**
+ * Utility functions for authentication
+ */
+import axios from 'axios';
 
-// Set token with expiry check
-export const setToken = (token) => {
-  if (!token) return false;
-  localStorage.setItem(TOKEN_KEY, token);
-  
-  // Update axios headers
-  if (typeof window !== 'undefined') {
-    if (window.axios && window.axios.defaults) {
-      window.axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    }
-  }
-  
-  return true;
-};
-
-// Get token if not expired
-export const getToken = () => {
-  return localStorage.getItem(TOKEN_KEY);
-};
-
-// Clear token and user data
-export const clearAuth = () => {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(ROLE_KEY);
-  localStorage.removeItem(NAME_KEY);
-  localStorage.removeItem(ID_KEY);
-  
-  // Clear axios headers
-  if (typeof window !== 'undefined') {
-    if (window.axios && window.axios.defaults && window.axios.defaults.headers) {
-      delete window.axios.defaults.headers.common['Authorization'];
-    }
-  }
-};
-
-// Set user data
+// Store user data in localStorage
 export const setUserData = (user) => {
-  if (!user) return;
-  
-  if (user.role) localStorage.setItem(ROLE_KEY, user.role);
-  if (user.name) localStorage.setItem(NAME_KEY, user.name);
-  if (user.id) localStorage.setItem(ID_KEY, user.id.toString());
-};
-
-// Get user data
-export const getUserData = () => {
-  return {
-    role: localStorage.getItem(ROLE_KEY),
-    name: localStorage.getItem(NAME_KEY),
-    id: localStorage.getItem(ID_KEY)
-  };
-};
-
-// Initialize auth headers
-export const initAuthHeaders = () => {
-  const token = getToken();
-  if (token && typeof window !== 'undefined' && window.axios) {
-    window.axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  if (user) {
+    localStorage.setItem('user', JSON.stringify(user));
+    localStorage.setItem('userId', user.id);
+    localStorage.setItem('userRole', user.role);
   }
 };
 
-export default {
-  setToken,
-  getToken,
-  clearAuth,
-  setUserData,
-  getUserData,
-  initAuthHeaders
+// Get current user data from localStorage
+export const getUserData = () => {
+  const userData = localStorage.getItem('user');
+  return userData ? JSON.parse(userData) : null;
+};
+
+// Clear all auth data
+export const clearAuth = () => {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  localStorage.removeItem('userId');
+  localStorage.removeItem('userRole');
+};
+
+// Parse token expiration date
+export const getTokenExpiration = (token) => {
+  try {
+    // Extract payload from JWT token
+    const payload = token.split('.')[1];
+    const decoded = JSON.parse(atob(payload));
+    
+    // Check if exp claim exists
+    if (decoded.exp) {
+      return new Date(decoded.exp * 1000); // Convert to milliseconds
+    }
+    
+    return null;
+  } catch (err) {
+    console.error('Error parsing token:', err);
+    return null;
+  }
+};
+
+// Check if token is about to expire (within 1 hour)
+export const isTokenExpiringSoon = (token) => {
+  const expiration = getTokenExpiration(token);
+  if (!expiration) return false;
+  
+  const now = new Date();
+  const oneHour = 60 * 60 * 1000; // 1 hour in milliseconds
+  
+  return (expiration.getTime() - now.getTime()) < oneHour;
+};
+
+// Get token from localStorage
+export const getToken = () => {
+  return localStorage.getItem('token');
+};
+
+// Initialize auth headers for axios
+export const initAuthHeaders = () => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  } else {
+    delete axios.defaults.headers.common['Authorization'];
+  }
 };

@@ -1,72 +1,67 @@
-/**
- * Utility functions for handling image paths and URLs
- */
-
-const path = require('path');
 
 /**
- * Formats image URLs consistently regardless of source format
- * @param {string} imagePath - The raw image path from the database
- * @param {string} type - The image type ('cars' or 'licenses')
- * @returns {string|null} - The formatted image URL or null if no image
+ * Standardized image handling utility functions
  */
-const formatImageUrl = (imagePath, type = 'cars') => {
-  if (!imagePath) return null;
 
-  // Get the base URL from environment or default
-  const baseUrl = process.env.API_URL || "http://localhost:5000";
+// Base URL for images
+const BASE_URL = process.env.BASE_URL || 'http://localhost:5000';
+
+/**
+ * Get a standardized image URL
+ * @param {string} imagePath - The path to the image 
+ * @param {string} type - The type of image (cars, profiles, licenses)
+ * @returns {string} - The full image URL
+ */
+const getImageUrl = (imagePath, type = '') => {
+  if (!imagePath) {
+    // Return placeholder image based on type
+    return `${BASE_URL}/assets/images/${type}-placeholder.jpg`;
+  }
   
-  // Normalize image paths to a consistent format
-  
-  // Case 1: If it's already a complete URL, return it
-  if (imagePath.startsWith("http")) {
+  // Handle case when imagePath is already a full URL
+  if (imagePath.startsWith('http')) {
     return imagePath;
   }
   
-  // Case 2: If it's an absolute path from the filesystem
-  if (imagePath.startsWith("/mnt/") || imagePath.startsWith("C:")) {
-    // Extract just the filename
-    const filename = path.basename(imagePath);
-    return `${baseUrl}/uploads/${type}/${filename}`;
+  // Handle relative paths
+  let fullPath = imagePath;
+  
+  // Ensure path starts with uploads/
+  if (!fullPath.startsWith('uploads/')) {
+    if (type) {
+      fullPath = `uploads/${type}/${imagePath}`;
+    } else {
+      fullPath = `uploads/${imagePath}`;
+    }
   }
   
-  // Case 3: If it's already a proper relative path with 'uploads'
-  if (imagePath.startsWith("uploads/")) {
-    return `${baseUrl}/${imagePath}`;
-  }
-  
-  // Case 4: If it contains uploads path in the middle
-  if (imagePath.includes("/uploads/")) {
-    const parts = imagePath.split("/uploads/");
-    return `${baseUrl}/uploads/${parts[1]}`;
-  }
-  
-  // Case 5: If it's just a filename or relative path without 'uploads'
-  return `${baseUrl}/uploads/${type}/${path.basename(imagePath)}`;
+  return `${BASE_URL}/${fullPath}`;
 };
 
 /**
- * Normalizes image paths for database storage
- * @param {string} imagePath - The raw image path
- * @param {string} type - The image type ('cars' or 'licenses')
- * @returns {string|null} - The normalized path for database storage
+ * Process image path to ensure consistent format
+ * @param {string} imagePath - The path to process
+ * @returns {string} - The processed path
  */
-const normalizeImagePath = (imagePath, type = 'cars') => {
+const processImagePath = (imagePath) => {
   if (!imagePath) return null;
   
-  // Goal is to store as: "uploads/cars/filename.jpg"
-  
-  // If it's already in the correct format, return it
-  if (imagePath.startsWith("uploads/") && imagePath.includes(`/${type}/`)) {
-    return imagePath;
+  // Remove base URL if it exists
+  let processedPath = imagePath;
+  if (processedPath.startsWith(BASE_URL)) {
+    processedPath = processedPath.substring(BASE_URL.length);
   }
   
-  // Extract filename and normalize
-  const filename = path.basename(imagePath);
-  return `uploads/${type}/${filename}`;
+  // Ensure path starts with a /
+  if (!processedPath.startsWith('/')) {
+    processedPath = '/' + processedPath;
+  }
+  
+  // Remove any double slashes
+  return processedPath.replace(/\/\//g, '/');
 };
 
 module.exports = {
-  formatImageUrl,
-  normalizeImagePath
+  getImageUrl,
+  processImagePath
 };

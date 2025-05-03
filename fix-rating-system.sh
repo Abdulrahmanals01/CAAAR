@@ -1,0 +1,332 @@
+#!/bin/bash
+
+# Create backup directories
+BACKUP_DIR="backups/$(date +%Y%m%d)"
+mkdir -p "$BACKUP_DIR"
+
+echo "Creating backups in $BACKUP_DIR..."
+
+# 1. First, create a missing Review.jsx page to handle the review/:bookingId route
+echo "Creating Review.jsx page..."
+cat > frontend/src/pages/Review.jsx << 'EOFREVIEW'
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { getUserBookings } from '../api/bookings';
+import { checkRatingEligibility } from '../api/ratings';
+import RatingForm from '../components/ratings/RatingForm';
+import useAuth from '../hooks/useAuth';
+
+const Review = () => {
+  const { bookingId } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [booking, setBooking] = useState(null);
+  const [eligibility, setEligibility] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const userRole = localStorage.getItem('userRole') || user?.role;
+  const isRenter = userRole === 'renter';
+
+  useEffect(() => {
+    const fetchBookingAndEligibility = async () => {
+      try {
+        setLoading(true);
+        
+        // First, check rating eligibility
+        const eligibilityResponse = await checkRatingEligibility(bookingId);
+        if (!eligibilityResponse.success) {
+          setError(eligibilityResponse.error || 'Failed to check rating eligibility');
+          setLoading(false);
+          return;
+        }
+
+        const eligibilityData = eligibilityResponse.data;
+        setEligibility(eligibilityData);
+
+        // If not eligible, show error
+        if (!eligibilityData.eligible) {
+          setError('You cannot rate this booking at this time. It may have already been rated or is not completed.');
+          setLoading(false);
+          return;
+        }
+
+        // Get booking details
+        const bookingsResponse = await getUserBookings();
+        if (!bookingsResponse.success) {
+          setError(bookingsResponse.error || 'Failed to load booking details');
+          setLoading(false);
+          return;
+        }
+
+        // Find the specific booking
+        const foundBooking = bookingsResponse.data.find(b => b.id.toString() === bookingId);
+        if (!foundBooking) {
+          setError('Booking not found');
+          setLoading(false);
+          return;
+        }
+
+        setBooking(foundBooking);
+        setLoading(false);
+      } catch (err) {
+        setError('An error occurred while loading the booking details');
+        setLoading(false);
+      }
+    };
+
+    fetchBookingAndEligibility();
+  }, [bookingId]);
+
+  const handleRatingSuccess = () => {
+    // Redirect to booking history
+    navigate('/booking-history');
+  };
+
+  const handleCancel = () => {
+    // Go back to booking history
+    navigate('/booking-history');
+  };
+
+  if (loading) {
+    return (
+      <div className="container mx-auto p-6 flex justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4">
+          {error}
+        </div>
+        <button
+          onClick={() => navigate('/booking-history')}
+          className="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700"
+        >
+          Back to Bookings
+        </button>
+      </div>
+    );
+  }
+
+  if (!booking) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4">
+          Booking not found
+        </div>
+        <button
+          onClick={() => navigate('/booking-history')}
+          className="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700"
+        >
+          Back to Bookings
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto p-6">
+      <h1 className="text-3xl font-bold mb-6">Rate Your Experience</h1>
+      <div className="mb-6 bg-gray-100 p-4 rounded-lg">
+        <h2 className="text-xl font-semibold mb-2">
+          {booking.brand} {booking.model} ({booking.year})
+        </h2>
+        <p className="text-gray-700">
+          {new Date(booking.start_date).toLocaleDateString()} - {new Date(booking.end_date).toLocaleDateString()}
+        </p>
+      </div>
+      <RatingForm
+        booking={booking}
+        isRenter={eligibility?.isRenter}
+        onSuccess={handleRatingSuccess}
+        onCancel={handleCancel}
+      />
+    </div>
+  );
+};
+
+export default Review;
+EOFREVIEW
+
+# 2. Update the BookingHistory.jsx to navigate to the review page
+echo "Backing up BookingHistory.jsx..."
+cp frontend/src/pages/BookingHistory.jsx "$BACKUP_DIR/BookingHistory.jsx.bak"
+
+echo "Updating BookingHistory.jsx..."
+# Create a temporary update file
+cat > temp-update-booking-history.js << 'EOFUPDATEBOOKINGHISTORY'
+const fs = require('fs');
+const path = require('path');
+
+// Path to the BookingHistory.jsx file
+const bookingHistoryPath = path.join(__dirname, 'frontend/src/pages/BookingHistory.jsx');
+
+// Read the file
+let content = fs.readFileSync(bookingHistoryPath, 'utf8');
+
+// We need to replace the RatingForm handling with navigation to the review page
+// First, let's find and modify the handleRateBooking function
+
+// Replace direct rating form with navigation to review page
+const oldHandleRateBooking = `const handleRateBooking = (booking) => {
+    setRatingBooking(booking);
+  };`;
+
+const newHandleRateBooking = `const handleRateBooking = (booking) => {
+    // Navigate to the review page for this booking
+    window.location.href = \`/review/\${booking.id}\`;
+  };`;
+
+content = content.replace(oldHandleRateBooking, newHandleRateBooking);
+
+// Remove the ratingBooking conditional rendering since we're now using a page
+const oldRatingBookingCheck = `// If rating a booking, show the rating form
+  if (ratingBooking) {
+    return (
+      <div className="container mx-auto p-6">
+        <h1 className="text-3xl font-bold mb-6">Rate Your Experience</h1>
+        <RatingForm
+          booking={ratingBooking}
+          isRenter={isRenter}
+          onSuccess={handleRatingComplete}
+          onCancel={handleRatingCancel}
+        />
+      </div>
+    );
+  }`;
+
+// Replace with an empty string (remove it completely)
+content = content.replace(oldRatingBookingCheck, '');
+
+// Write the updated content back to the file
+fs.writeFileSync(bookingHistoryPath, content);
+
+console.log('BookingHistory.jsx updated successfully');
+EOFUPDATEBOOKINGHISTORY
+
+# Run the update script
+node temp-update-booking-history.js
+rm temp-update-booking-history.js
+
+# 3. Update App.jsx to include the Review route
+echo "Backing up App.jsx..."
+cp frontend/src/App.jsx "$BACKUP_DIR/App.jsx.bak"
+
+echo "Updating App.jsx..."
+# Create a temporary update script
+cat > temp-update-app.js << 'EOFUPDATEAPP'
+const fs = require('fs');
+const path = require('path');
+
+// Path to the App.jsx file
+const appPath = path.join(__dirname, 'frontend/src/App.jsx');
+
+// Read the file
+let content = fs.readFileSync(appPath, 'utf8');
+
+// Add the Review import
+const importStatement = `import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import { ChatProvider } from './context/ChatContext';`;
+
+const updatedImportStatement = `import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import { ChatProvider } from './context/ChatContext';
+import Review from './pages/Review';`;
+
+content = content.replace(importStatement, updatedImportStatement);
+
+// Add the Review route - look for a good place to insert it
+const routeInsertionPoint = `<Route path="/profile/:userId" element={<UserProfile />} />
+              <Route path="*" element={<NotFound />} />`;
+
+const updatedRoutes = `<Route path="/profile/:userId" element={<UserProfile />} />
+              <Route path="/review/:bookingId" element={<PrivateRoute element={<Review />} />} />
+              <Route path="*" element={<NotFound />} />`;
+
+content = content.replace(routeInsertionPoint, updatedRoutes);
+
+// Write the updated content back to the file
+fs.writeFileSync(appPath, content);
+
+console.log('App.jsx updated successfully');
+EOFUPDATEAPP
+
+# Run the update script
+node temp-update-app.js
+rm temp-update-app.js
+
+# 4. Create or update the ratings API module
+echo "Updating ratings API..."
+cat > frontend/src/api/ratings.js << 'EOFRATINGAPI'
+import axios from '../utils/axiosConfig';
+
+// Create a new rating
+export const createRating = async (ratingData) => {
+  try {
+    const response = await axios.post('/api/ratings', ratingData);
+    return { success: true, data: response.data };
+  } catch (error) {
+    console.error('Error creating rating:', error);
+    return {
+      success: false,
+      error: error.response?.data?.message || 'Error creating rating'
+    };
+  }
+};
+
+// Check if user can rate a booking
+export const checkRatingEligibility = async (bookingId) => {
+  try {
+    const response = await axios.get(`/api/ratings/check/${bookingId}`);
+    return { success: true, data: response.data };
+  } catch (error) {
+    console.error('Error checking rating eligibility:', error);
+    return {
+      success: false,
+      error: error.response?.data?.message || 'Error checking rating eligibility'
+    };
+  }
+};
+
+// Get ratings for a car
+export const getCarRatings = async (carId) => {
+  try {
+    const response = await axios.get(`/api/ratings/car/${carId}`);
+    return { success: true, data: response.data };
+  } catch (error) {
+    console.error('Error getting car ratings:', error);
+    return {
+      success: false,
+      error: error.response?.data?.message || 'Error getting car ratings'
+    };
+  }
+};
+
+// Get ratings for a user
+export const getUserRatings = async (userId) => {
+  try {
+    const response = await axios.get(`/api/ratings/user/${userId}`);
+    return { success: true, data: response.data };
+  } catch (error) {
+    console.error('Error getting user ratings:', error);
+    return {
+      success: false,
+      error: error.response?.data?.message || 'Error getting user ratings'
+    };
+  }
+};
+EOFRATINGAPI
+
+# Make the script executable
+chmod +x "$0"
+
+echo "✅ Rating system fix completed successfully!"
+echo "Now you can start your frontend application with 'cd frontend && npm start'"
+echo "When a booking is completed, you can click 'Leave Rating' to be taken to the review page"

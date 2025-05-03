@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { getUserBookings, updateBookingStatus } from '../api/bookings';
 import { checkRatingEligibility } from '../api/ratings';
 import useAuth from '../hooks/useAuth';
-import RatingForm from '../components/ratings/RatingForm';
 import StarRating from '../components/common/StarRating';
 
 const BookingHistory = () => {
@@ -11,8 +10,8 @@ const BookingHistory = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('current');
-  const [ratingBooking, setRatingBooking] = useState(null);
   const [ratingEligibility, setRatingEligibility] = useState({});
+  const navigate = useNavigate();
 
   const { user } = useAuth();
   const userRole = localStorage.getItem('userRole') || user?.role;
@@ -35,7 +34,7 @@ const BookingHistory = () => {
         );
 
         console.log('Completed bookings found:', completedBookings.length);
-        
+
         for (const booking of completedBookings) {
           await checkEligibility(booking.id);
         }
@@ -53,15 +52,15 @@ const BookingHistory = () => {
     try {
       console.log(`Checking rating eligibility for booking ${bookingId}`);
       const response = await checkRatingEligibility(bookingId);
-      
+
       console.log('Eligibility check response:', response);
-      
+
       if (response.success) {
         setRatingEligibility(prev => ({
           ...prev,
           [bookingId]: response.data
         }));
-        
+
         console.log(`Rating eligibility for booking ${bookingId}:`, response.data);
       } else {
         console.warn(`Error checking eligibility: ${response.error}`);
@@ -93,30 +92,9 @@ const BookingHistory = () => {
     }
   };
 
-  const handleRateBooking = (booking) => {
-    setRatingBooking(booking);
-  };
-
-  const handleRatingComplete = () => {
-    // Update eligibility after rating is submitted
-    if (ratingBooking) {
-      setRatingEligibility(prev => ({
-        ...prev,
-        [ratingBooking.id]: {
-          ...prev[ratingBooking.id],
-          eligible: false,
-          hasRated: true
-        }
-      }));
-    }
-
-    setRatingBooking(null);
-    // Refresh bookings to ensure everything is up to date
-    fetchBookings();
-  };
-
-  const handleRatingCancel = () => {
-    setRatingBooking(null);
+  const handleRateBooking = (bookingId) => {
+    // Navigate to the review page for this booking
+    navigate(`/review/${bookingId}`);
   };
 
   const getStatusBadgeClass = (status) => {
@@ -178,21 +156,6 @@ const BookingHistory = () => {
     );
   }
 
-  // If rating a booking, show the rating form
-  if (ratingBooking) {
-    return (
-      <div className="container mx-auto p-6">
-        <h1 className="text-3xl font-bold mb-6">Rate Your Experience</h1>
-        <RatingForm
-          booking={ratingBooking}
-          isRenter={isRenter}
-          onSuccess={handleRatingComplete}
-          onCancel={handleRatingCancel}
-        />
-      </div>
-    );
-  }
-
   return (
     <div className="container mx-auto p-6">
       <h1 className="text-3xl font-bold mb-6">
@@ -218,7 +181,7 @@ const BookingHistory = () => {
           >
             Current Trips
             {currentBookings.length > 0 && (
-              <span className="ml-2 bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+              <span className="ml-2 bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">        
                 {currentBookings.length}
               </span>
             )}
@@ -233,7 +196,7 @@ const BookingHistory = () => {
           >
             Pending
             {pendingBookings.length > 0 && (
-              <span className="ml-2 bg-yellow-100 text-yellow-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+              <span className="ml-2 bg-yellow-100 text-yellow-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">    
                 {pendingBookings.length}
               </span>
             )}
@@ -248,7 +211,7 @@ const BookingHistory = () => {
           >
             Past Trips
             {pastBookings.length > 0 && (
-              <span className="ml-2 bg-gray-100 text-gray-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+              <span className="ml-2 bg-gray-100 text-gray-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">        
                 {pastBookings.length}
               </span>
             )}
@@ -270,7 +233,8 @@ const BookingHistory = () => {
           {isRenter && (
             <Link
               to="/cars/search"
-              className="inline-block bg-blue-600 text-white font-medium py-2 px-4 rounded hover:bg-blue-700 transition"     
+              className="inline-block bg-blue-600 text-white font-medium py-2 px-4 rounded hover:bg-blue-700 transition"
+
             >
               Find a car to rent
             </Link>
@@ -283,9 +247,10 @@ const BookingHistory = () => {
             const eligibilityInfo = ratingEligibility[booking.id] || {};
             const canRate = booking.status === 'completed' && eligibilityInfo.eligible === true;
             const hasRated = eligibilityInfo.hasRated === true;
-            
+
             return (
-              <div key={booking.id} className="bg-white rounded-lg shadow-md overflow-hidden flex flex-col md:flex-row">       
+              <div key={booking.id} className="bg-white rounded-lg shadow-md overflow-hidden flex flex-col md:flex-row">
+
                 <div className="md:w-1/3 bg-gray-200">
                   {booking.image ? (
                     <img
@@ -309,7 +274,7 @@ const BookingHistory = () => {
                         {new Date(booking.start_date).toLocaleDateString()} to {new Date(booking.end_date).toLocaleDateString()}
                       </p>
                     </div>
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusBadgeClass(booking.status)}`}>     
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusBadgeClass(booking.status)}`}>
                       {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                     </span>
                   </div>
@@ -376,7 +341,7 @@ const BookingHistory = () => {
                     )}
 
                     {/* Trip completed button ONLY for host when trip end date has passed */}
-                    {!isRenter && booking.status === 'accepted' && new Date(booking.end_date) < currentDate && (
+                    {!isRenter && booking.status === 'accepted' && new Date(booking.end_date) < currentDate && (        
                       <button
                         onClick={() => handleStatusUpdate(booking.id, 'completed')}
                         className="bg-blue-600 text-white py-1 px-3 rounded-full text-sm font-medium hover:bg-blue-700 transition"
@@ -396,12 +361,12 @@ const BookingHistory = () => {
                     )}
 
                     {/* Rating button for completed bookings if eligible */}
-                    {canRate && (
+                    {booking.status === 'completed' && canRate && (
                       <button
-                        onClick={() => handleRateBooking(booking)}
+                        onClick={() => handleRateBooking(booking.id)}
                         className="bg-yellow-500 text-white py-1 px-3 rounded-full text-sm font-medium hover:bg-yellow-600 transition"
                       >
-                        Leave Rating
+                        {isRenter ? 'Rate Host & Car' : 'Rate Renter'}
                       </button>
                     )}
 

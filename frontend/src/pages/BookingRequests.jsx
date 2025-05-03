@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { updateBookingStatus } from '../api/bookings';
+import { checkRatingEligibility } from '../api/ratings';
 import useAuth from '../hooks/useAuth';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
@@ -13,7 +15,32 @@ const BookingRequests = () => {
   const [actionError, setActionError] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [processingBookingId, setProcessingBookingId] = useState(null);
+  const [ratingEligibility, setRatingEligibility] = useState({});
   const { user } = useAuth();
+  const navigate = useNavigate();
+
+  
+  const checkEligibility = async (bookingId) => {
+    try {
+      console.log(`Checking rating eligibility for booking ${bookingId}`);
+      const response = await checkRatingEligibility(bookingId);
+
+      console.log('Eligibility check response:', response);
+
+      if (response.success) {
+        setRatingEligibility(prev => ({
+          ...prev,
+          [bookingId]: response.data
+        }));
+
+        console.log(`Rating eligibility for booking ${bookingId}:`, response.data);
+      } else {
+        console.warn(`Error checking eligibility: ${response.error}`);
+      }
+    } catch (err) {
+      console.error(`Error checking rating eligibility for booking ${bookingId}:`, err);
+    }
+  };
 
   const fetchBookings = async () => {
     try {
@@ -111,6 +138,12 @@ const BookingRequests = () => {
     } finally {
       setProcessingBookingId(null);
     }
+  };
+
+
+  const handleRateBooking = (bookingId) => {
+    // Navigate to the review page for this booking
+    navigate(`/review/${bookingId}`);
   };
 
   const handleRefresh = () => {

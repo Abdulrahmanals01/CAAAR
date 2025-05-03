@@ -34,8 +34,8 @@ export const getCars = async (filters = {}) => {
 
       // Format image URL if needed
       if (car.image && !car.image_url) {
-        processedCar.image_url = getImageUrl(car.image, 'cars');
-      }
+      car.image_url = getImageUrl(car.image, 'cars');
+    }
 
       // Ensure latitude and longitude are parsed as numbers if they exist
       if (car.latitude !== undefined && car.latitude !== null) {
@@ -193,8 +193,8 @@ export const getHostCars = async () => {
     // Process and standardize image URLs in the response
     const carsWithFormattedImages = response.data.map(car => {
       if (car.image && !car.image_url) {
-        car.image_url = getImageUrl(car.image, 'cars');
-      }
+      car.image_url = getImageUrl(car.image, 'cars');
+    }
 
       // Parse coordinates as numbers
       if (car.latitude) car.latitude = parseFloat(car.latitude);
