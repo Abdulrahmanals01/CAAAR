@@ -143,7 +143,16 @@ const isCarAvailable = async (carId, startDate, endDate) => {
 
 const createBooking = async (req, res) => {
   try {
-    const { car_id, start_date, end_date } = req.body;
+    const { 
+      car_id, 
+      start_date, 
+      end_date, 
+      insurance_type, 
+      insurance_amount, 
+      platform_fee, 
+      total_price: client_total_price,
+      base_price 
+    } = req.body;
     const renter_id = req.user.id;
 
     
@@ -220,7 +229,44 @@ const createBooking = async (req, res) => {
     const carInfo = await db.query('SELECT price_per_day FROM cars WHERE id = $1', [car_id]);
     const pricePerDay = carInfo.rows[0].price_per_day;
     const days = Math.ceil((new Date(end_date) - new Date(start_date)) / (1000 * 60 * 60 * 24)) + 1;
-    const totalPrice = days * pricePerDay;
+    
+    // Calculate the base price (what the host receives)
+    const calculatedBasePrice = days * pricePerDay;
+    
+    // If client provided insurance details, use those
+    let totalPrice = calculatedBasePrice;
+    let insuranceDetails = null;
+    
+    if (insurance_type && (insurance_type === 'full' || insurance_type === 'third-party')) {
+      // Validate that the provided prices are reasonable
+      const FULL_INSURANCE_PERCENTAGE = 35;
+      const THIRD_PARTY_INSURANCE_PERCENTAGE = 15;
+      const PLATFORM_FEE_PERCENTAGE = 5;
+      
+      const expectedInsurancePercentage = insurance_type === 'full' ? FULL_INSURANCE_PERCENTAGE : THIRD_PARTY_INSURANCE_PERCENTAGE;
+      const expectedInsuranceAmount = (calculatedBasePrice * expectedInsurancePercentage) / 100;
+      const expectedPlatformFee = (calculatedBasePrice * PLATFORM_FEE_PERCENTAGE) / 100;
+      const expectedTotalPrice = calculatedBasePrice + expectedInsuranceAmount + expectedPlatformFee;
+      
+      // Allow small floating point differences (within 1 unit)
+      const isInsuranceAmountValid = Math.abs(insurance_amount - expectedInsuranceAmount) < 1;
+      const isPlatformFeeValid = Math.abs(platform_fee - expectedPlatformFee) < 1;
+      const isTotalPriceValid = Math.abs(client_total_price - expectedTotalPrice) < 1;
+      
+      if (!isInsuranceAmountValid || !isPlatformFeeValid || !isTotalPriceValid) {
+        return res.status(400).json({ message: 'Invalid price calculation. Please try again.' });
+      }
+      
+      totalPrice = client_total_price;
+      insuranceDetails = {
+        type: insurance_type,
+        amount: insurance_amount,
+        platform_fee: platform_fee
+      };
+    } else {
+      // No insurance selected - use base price
+      totalPrice = calculatedBasePrice;
+    }
 
     
     const client = await db.pool.connect();
@@ -229,12 +275,29 @@ const createBooking = async (req, res) => {
       await client.query('BEGIN');
 
       
-      const bookingResult = await client.query(
-        `INSERT INTO bookings (renter_id, car_id, start_date, end_date, total_price, status)
-         VALUES ($1, $2, $3, $4, $5, 'pending')
-         RETURNING *`,
-        [renter_id, car_id, start_date, end_date, totalPrice]
-      );
+      let bookingResult;
+      
+      if (insuranceDetails) {
+        bookingResult = await client.query(
+          `INSERT INTO bookings (
+            renter_id, car_id, start_date, end_date, total_price, status, 
+            base_price, insurance_type, insurance_amount, platform_fee
+          )
+          VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7, $8, $9)
+          RETURNING *`,
+          [
+            renter_id, car_id, start_date, end_date, totalPrice, 
+            calculatedBasePrice, insuranceDetails.type, insuranceDetails.amount, insuranceDetails.platform_fee
+          ]
+        );
+      } else {
+        bookingResult = await client.query(
+          `INSERT INTO bookings (renter_id, car_id, start_date, end_date, total_price, status, base_price)
+           VALUES ($1, $2, $3, $4, $5, 'pending', $6)
+           RETURNING *`,
+          [renter_id, car_id, start_date, end_date, totalPrice, calculatedBasePrice]
+        );
+      }
 
       const booking = bookingResult.rows[0];
 

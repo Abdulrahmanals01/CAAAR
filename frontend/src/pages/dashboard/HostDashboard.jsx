@@ -104,7 +104,11 @@ const HostDashboard = () => {
   const calculateStatistics = async (cars, bookings) => {
     try {
       const completedBookings = bookings.filter(b => b.status === 'completed');
-      const totalEarnings = completedBookings.reduce((sum, booking) => sum + Number(booking.total_price), 0);
+      const totalEarnings = completedBookings.reduce((sum, booking) => {
+        // Use base_price if available, otherwise fall back to total_price
+        const earningsAmount = booking.base_price ? Number(booking.base_price) : Number(booking.total_price);
+        return sum + earningsAmount;
+      }, 0);
       
       // Count active cars (those available for booking)
       const activeCars = cars.filter(car => car.is_available !== false).length;
@@ -132,7 +136,11 @@ const HostDashboard = () => {
       
       // Set statistics with available data even if ratings fetch fails
       const completedBookings = bookings.filter(b => b.status === 'completed');
-      const totalEarnings = completedBookings.reduce((sum, booking) => sum + Number(booking.total_price), 0);
+      const totalEarnings = completedBookings.reduce((sum, booking) => {
+        // Use base_price if available, otherwise fall back to total_price
+        const earningsAmount = booking.base_price ? Number(booking.base_price) : Number(booking.total_price);
+        return sum + earningsAmount;
+      }, 0);
       const activeCars = cars.filter(car => car.is_available !== false).length;
       
       setStatistics({
@@ -548,7 +556,10 @@ const HostDashboard = () => {
                   <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <h3 className="text-sm font-medium text-gray-500">Total Price</h3>
-                      <p className="font-semibold">${booking.total_price}</p>
+                      <p className="font-semibold">
+                        Total Price: {booking.base_price ? Number(booking.base_price).toFixed(2) : Number(booking.total_price).toFixed(2)} SAR
+                        <span className="block text-xs text-gray-500">(all fees deducted)</span>
+                      </p>
                     </div>
                     <div>
                       <h3 className="text-sm font-medium text-gray-500">Renter</h3>

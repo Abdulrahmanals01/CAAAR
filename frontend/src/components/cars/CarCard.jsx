@@ -54,6 +54,9 @@ const CarCard = ({ car }) => {
                 {car.car_type}
               </span>
             )}
+            <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">
+              Insurance: Tawuniya
+            </span>
           </div>
         </div>
         

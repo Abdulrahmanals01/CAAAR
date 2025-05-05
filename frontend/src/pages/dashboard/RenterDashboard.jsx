@@ -331,7 +331,14 @@ const RenterDashboard = () => {
                       {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                     </span>
                   </p>
-                  <p className="text-green-600 font-bold mt-2">Total: {booking.total_price} SAR</p>
+                  <div className="mt-2">
+                    <p className="text-green-600 font-bold">
+                      Total: {Number(booking.total_price).toFixed(2)} SAR
+                      <span className="font-normal text-xs text-gray-500 block">
+                        (including all fees)
+                      </span>
+                    </p>
+                  </div>
                 </div>
 
                 <div className="mt-4 space-y-2">

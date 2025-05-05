@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { createBooking } from '../../api/bookings';
 import useAuth from '../../hooks/useAuth';
 import { formatCurrency } from '../../utils/dataFormatter';
+import InsuranceModal from './InsuranceModal';
 
 const BookingForm = ({ car }) => {
   const navigate = useNavigate();
@@ -14,9 +15,12 @@ const BookingForm = ({ car }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [basePrice, setBasePrice] = useState(0);
   const [totalPrice, setTotalPrice] = useState(0);
+  const [showInsuranceModal, setShowInsuranceModal] = useState(false);
+  const [selectedInsurance, setSelectedInsurance] = useState(null);
+  const [days, setDays] = useState(0);
 
-  
   const isOwnCar = car && car.user_id === user?.id;
 
   
@@ -40,10 +44,20 @@ const BookingForm = ({ car }) => {
     if (formData.start_date && formData.end_date && car) {
       const start = new Date(formData.start_date);
       const end = new Date(formData.end_date);
-      const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
-      setTotalPrice(days * car.price_per_day);
+      const calculatedDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+      setDays(calculatedDays);
+      const calculatedBasePrice = calculatedDays * car.price_per_day;
+      setBasePrice(calculatedBasePrice);
+      
+      if (selectedInsurance) {
+        // If insurance is selected, use the total from insurance calculations
+        setTotalPrice(selectedInsurance.totalPrice);
+      } else {
+        // Otherwise just show the base price
+        setTotalPrice(calculatedBasePrice);
+      }
     }
-  }, [formData, car]);
+  }, [formData, car, selectedInsurance]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -53,15 +67,13 @@ const BookingForm = ({ car }) => {
     });
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    setLoading(true);
     setError('');
 
     // Verify user is logged in
     if (!user) {
       setError('You have to login to book a car');
-      setLoading(false);
       
       // Save current URL for redirect after login
       localStorage.setItem('redirectAfterLogin', window.location.pathname);
@@ -72,15 +84,29 @@ const BookingForm = ({ car }) => {
     // Verify not own car
     if (isOwnCar) {
       setError('You cannot book your own car');
-      setLoading(false);
       return;
     }
 
+    // Always show insurance modal - insurance selection is mandatory
+    setShowInsuranceModal(true);
+  };
+  
+  const handleConfirmBooking = async (insuranceDetails) => {
+    setShowInsuranceModal(false);
+    setLoading(true);
+    setError('');
+    setSelectedInsurance(insuranceDetails);
+    
     try {
       const bookingData = {
         car_id: car.id,
         start_date: formData.start_date,
         end_date: formData.end_date,
+        insurance_type: insuranceDetails.insuranceType,
+        insurance_amount: insuranceDetails.insuranceAmount,
+        platform_fee: insuranceDetails.platformFeeAmount,
+        total_price: insuranceDetails.totalPrice,
+        base_price: basePrice
       };
 
       const response = await createBooking(bookingData);
@@ -90,9 +116,7 @@ const BookingForm = ({ car }) => {
         
         const currentRole = user.role;
         
-        
         setTimeout(() => {
-          
           if (localStorage.getItem('userRole') !== currentRole) {
             localStorage.setItem('userRole', currentRole);
           }
@@ -202,13 +226,36 @@ const BookingForm = ({ car }) => {
           <h3 className="text-lg font-semibold mb-2">Price Details</h3>
           <div className="flex justify-between mb-2">
             <span className="text-gray-600">Price per day:</span>
-            <span className="font-medium">{formatCurrency(car.price_per_day)} / day</span>
+            <span className="font-medium">{formatCurrency(car.price_per_day)} SAR / day</span>
           </div>
+          
+          {selectedInsurance && (
+            <>
+              <div className="flex justify-between mb-2">
+                <span className="text-gray-600">Base price ({days} days):</span>
+                <span className="font-medium">{formatCurrency(basePrice)} SAR</span>
+              </div>
+              <div className="flex justify-between mb-2">
+                <span className="text-gray-600">Insurance fee ({selectedInsurance.insuranceType === 'full' ? 'Full Coverage' : 'Third Party'}):</span>
+                <span className="font-medium">{formatCurrency(selectedInsurance.insuranceAmount)} SAR</span>
+              </div>
+              <div className="flex justify-between mb-2">
+                <span className="text-gray-600">Platform fee:</span>
+                <span className="font-medium">{formatCurrency(selectedInsurance.platformFeeAmount)} SAR</span>
+              </div>
+            </>
+          )}
+          
           <div className="border-t border-gray-300 my-2"></div>
           <div className="flex justify-between text-lg font-bold">
             <span>Total Price:</span>
-            <span>{formatCurrency(totalPrice)}</span>
+            <span>{formatCurrency(totalPrice)} SAR</span>
           </div>
+          {selectedInsurance && (
+            <p className="text-xs text-gray-500 mt-2">
+              * The host receives {formatCurrency(basePrice)} SAR. Insurance and platform fees are added to your total.
+            </p>
+          )}
         </div>
 
         <button
@@ -219,6 +266,14 @@ const BookingForm = ({ car }) => {
           {loading ? 'Processing...' : 'Book Now'}
         </button>
       </form>
+      
+      <InsuranceModal
+        isOpen={showInsuranceModal}
+        onClose={() => setShowInsuranceModal(false)}
+        onConfirm={handleConfirmBooking}
+        carPrice={car?.price_per_day}
+        days={days}
+      />
     </div>
   );
 };
