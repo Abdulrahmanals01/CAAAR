@@ -4,7 +4,7 @@ import StarRating from '../common/StarRating';
 import { Link } from 'react-router-dom';
 
 const RatingCard = ({ rating, type = 'user' }) => {
-  // Format the date
+  
   const formattedDate = rating.created_at
     ? formatDistanceToNow(new Date(rating.created_at), { addSuffix: true })
     : '';

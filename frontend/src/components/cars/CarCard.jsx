@@ -2,34 +2,16 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import StarRating from '../common/StarRating';
 import { formatCurrency } from '../../utils/dataFormatter';
+import { getImageUrl } from '../../utils/imageUtils';
 
 const CarCard = ({ car }) => {
-  // Function to handle image URLs
-  const getCarImageUrl = (image) => {
-    if (!image) {
-      return '/assets/images/car-placeholder.jpg';
-    }
-    
-    if (image.startsWith('http')) {
-      return image;
-    }
-    
-    const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-    
-    let imagePath = image;
-    if (!imagePath.startsWith('uploads/')) {
-      imagePath = `uploads/cars/${image}`;
-    }
-    
-    return `${baseUrl}/${imagePath}`;
-  };
 
   return (
     <div className="flex flex-col md:flex-row w-full h-full shadow-md rounded-lg overflow-hidden bg-white">
-      {/* Image */}
+      {}
       <div className="md:w-1/3 h-48 md:h-auto relative">
         <img
-          src={car.image_url || getCarImageUrl(car.image)}
+          src={car.image_url || getImageUrl(car.image, 'cars')}
           alt={`${car.brand} ${car.model}`}
           className="w-full h-full object-cover"
           onError={(e) => {
@@ -50,7 +32,7 @@ const CarCard = ({ car }) => {
         </div>
       </div>
       
-      {/* Details */}
+      {}
       <div className="md:w-2/3 p-4 flex flex-col justify-between">
         <div>
           <h2 className="text-xl font-bold text-gray-800">

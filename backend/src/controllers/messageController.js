@@ -1,18 +1,17 @@
 const db = require('../config/database');
 
-// Send a message
 exports.sendMessage = async (req, res) => {
   try {
     const { receiver_id, booking_id, message } = req.body;
     const sender_id = req.user.id;
 
-    // Insert message into database
+    
     const result = await db.query(
       'INSERT INTO messages (sender_id, receiver_id, booking_id, message) VALUES ($1, $2, $3, $4) RETURNING *',
       [sender_id, receiver_id, booking_id, message]
     );
 
-    // Emit message via socket (handled in socket.io implementation)
+    
     const newMessage = result.rows[0];
     
     res.status(201).json(newMessage);
@@ -22,13 +21,12 @@ exports.sendMessage = async (req, res) => {
   }
 };
 
-// Get conversation with a specific user
 exports.getConversation = async (req, res) => {
   try {
     const currentUserId = req.user.id;
     const otherUserId = req.params.userId;
 
-    // Get messages between the two users
+    
     const result = await db.query(
       `SELECT m.*, 
         u1.name as sender_name, 
@@ -42,7 +40,7 @@ exports.getConversation = async (req, res) => {
       [currentUserId, otherUserId]
     );
 
-    // Mark unread messages as read
+    
     await db.query(
       'UPDATE messages SET read = TRUE WHERE sender_id = $1 AND receiver_id = $2 AND read = FALSE',
       [otherUserId, currentUserId]
@@ -55,12 +53,11 @@ exports.getConversation = async (req, res) => {
   }
 };
 
-// Get all conversations for the current user
 exports.getAllConversations = async (req, res) => {
   try {
     const userId = req.user.id;
     
-    // Get the most recent message from each conversation partner
+    
     const result = await db.query(
       `WITH latest_messages AS (
         SELECT DISTINCT ON (
@@ -103,13 +100,12 @@ exports.getAllConversations = async (req, res) => {
   }
 };
 
-// Get booking messages
 exports.getBookingMessages = async (req, res) => {
   try {
     const bookingId = req.params.bookingId;
     const userId = req.user.id;
 
-    // Verify user is involved in the booking
+    
     const bookingCheck = await db.query(
       `SELECT b.id, b.renter_id, c.user_id as owner_id 
        FROM bookings b 
@@ -127,7 +123,7 @@ exports.getBookingMessages = async (req, res) => {
       return res.status(403).json({ message: 'Unauthorized' });
     }
 
-    // Get messages for this booking
+    
     const result = await db.query(
       `SELECT m.*, 
         u1.name as sender_name, 
@@ -140,7 +136,7 @@ exports.getBookingMessages = async (req, res) => {
       [bookingId]
     );
 
-    // Mark messages as read
+    
     await db.query(
       'UPDATE messages SET read = TRUE WHERE booking_id = $1 AND receiver_id = $2 AND read = FALSE',
       [bookingId, userId]
@@ -153,7 +149,6 @@ exports.getBookingMessages = async (req, res) => {
   }
 };
 
-// Get unread count
 exports.getUnreadCount = async (req, res) => {
   try {
     const userId = req.user.id;

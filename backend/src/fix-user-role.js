@@ -21,5 +21,4 @@ async function fixUserRole(userId, correctRole) {
   }
 }
 
-// Set user 1 to host role
 fixUserRole(1, 'host');

@@ -1,8 +1,0 @@
-// Add these debug lines to getUserBookings function after the query execution:
-console.log('User ID:', userId);
-console.log('User Role:', userRole);
-console.log('Query used:', userRole === 'renter' ? 'Renter query' : 'Host query');
-console.log('Results:', bookings.rows);
-
-// For hosts, the query returns bookings where their car is booked
-// For renters, the query returns bookings they made

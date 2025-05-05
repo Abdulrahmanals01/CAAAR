@@ -44,7 +44,7 @@ const DashboardNav = () => {
             <Link to="/cars" className="text-gray-700 hover:text-blue-600">
               Browse Cars
             </Link>
-            <Link to="/booking-history" className="text-gray-700 hover:text-blue-600">
+            <Link to="/dashboard/renter" className="text-gray-700 hover:text-blue-600">
               My Bookings
             </Link>
             <Link to="/messages" className="text-gray-700 hover:text-blue-600">

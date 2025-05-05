@@ -5,14 +5,11 @@ const authMiddleware = require('../middleware/auth');
 const userStatusMiddleware = require('../middleware/userStatus');
 const bookingController = require('../controllers/bookingController');
 
-// Protect all routes with authentication and status check
 router.use(authMiddleware.authenticate);
 router.use(userStatusMiddleware.checkUserStatus);
 
-// GET - Get car availability
 router.get('/availability/:id', bookingController.getCarAvailability);
 
-// POST - Create a new booking
 router.post(
   '/',
   [
@@ -29,10 +26,8 @@ router.post(
   bookingController.createBooking
 );
 
-// GET - Get user's bookings
 router.get('/user', bookingController.getUserBookings);
 
-// PUT - Update booking status
 router.put('/:id/status', bookingController.updateBookingStatus);
 
 module.exports = router;

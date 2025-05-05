@@ -18,7 +18,7 @@ async function updateTrigger() {
     await pool.query(sql);
     console.log('Trigger function updated successfully');
     
-    // Test if the update worked
+    
     const result = await pool.query("SELECT proname, prosrc FROM pg_proc WHERE proname = 'prevent_double_booking'");
     if (result.rows.length > 0) {
       console.log('Verification successful: Trigger function exists and has been updated');

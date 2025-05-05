@@ -25,7 +25,7 @@ const Inbox = () => {
       try {
         setLoading(true);
         
-        // Get token from localStorage
+        
         const token = getToken();
         if (!token) {
           console.log('No token found in localStorage');
@@ -34,7 +34,7 @@ const Inbox = () => {
         
         console.log(`Using token for messages (first 20 chars): ${token.substring(0, 20)}...`);
         
-        // Direct API call for better debugging
+        
         const response = await axios.get('http://localhost:5000/api/messages', {
           headers: {
             Authorization: `Bearer ${token}`
@@ -47,15 +47,15 @@ const Inbox = () => {
       } catch (err) {
         console.error('Error fetching conversations:', err);
         
-        // Handle token expiration specifically
+        
         if (err.response && err.response.status === 401) {
           console.log('Authentication error - token may be expired');
           setError('Your session has expired. Please log in again.');
           
-          // Optional: Redirect to login
-          // clearAuth();
-          // if (logout) logout();
-          // setTimeout(() => navigate('/login'), 2000);
+          
+          
+          
+          
         } else {
           setError('Failed to load conversations. Please check your connection and try again.');
         }

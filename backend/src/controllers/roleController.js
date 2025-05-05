@@ -1,17 +1,14 @@
 const jwt = require('jsonwebtoken');
 const db = require('../config/database');
 
-/**
- * Toggle user's role between 'host' and 'renter'
- */
 exports.toggleUserRole = async (req, res) => {
   try {
-    // Get user ID from the authenticated request
+    
     const userId = req.user.id;
     
     console.log(`[ROLE SWITCH] Request received for user ID: ${userId}`);
     
-    // Get user's current role from database
+    
     const userQuery = await db.query(
       'SELECT id, name, email, role FROM users WHERE id = $1',
       [userId]
@@ -25,16 +22,16 @@ exports.toggleUserRole = async (req, res) => {
       });
     }
     
-    // Get current user data
+    
     const user = userQuery.rows[0];
     const currentRole = user.role;
     
-    // Determine new role
+    
     const newRole = currentRole === 'host' ? 'renter' : 'host';
     
     console.log(`[ROLE SWITCH] Changing role for user ${user.email} from "${currentRole}" to "${newRole}"`);
     
-    // Update user's role in database
+    
     const updateResult = await db.query(
       'UPDATE users SET role = $1 WHERE id = $2 RETURNING id, name, email, role',
       [newRole, userId]
@@ -51,7 +48,7 @@ exports.toggleUserRole = async (req, res) => {
     const updatedUser = updateResult.rows[0];
     console.log(`[ROLE SWITCH] Successfully updated role to "${updatedUser.role}" for user ID: ${userId}`);
     
-    // Generate new JWT with updated role
+    
     const payload = {
       user: {
         id: updatedUser.id,
@@ -72,7 +69,7 @@ exports.toggleUserRole = async (req, res) => {
           });
         }
         
-        // Return success with new token and user data
+        
         res.json({
           success: true,
           message: `Role successfully changed to ${newRole}`,

@@ -150,7 +150,7 @@ const AdminDashboard = () => {
     });
   };
 
-  // Helper function to get badge colors based on action type
+  
   const getActionBadgeClass = (actionType) => {
     switch (actionType) {
       case 'freeze':
@@ -168,7 +168,7 @@ const AdminDashboard = () => {
     }
   };
 
-  // Format action type for display
+  
   const formatActionType = (actionType) => {
     switch (actionType) {
       case 'delete_listing':
@@ -503,7 +503,7 @@ const AdminDashboard = () => {
         </div>
       )}
 
-      {/* Freeze User Modal */}
+      {}
       {selectedUser && selectedUser.action === 'freeze' && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-8 max-w-md w-full">
@@ -549,7 +549,7 @@ const AdminDashboard = () => {
         </div>
       )}
 
-      {/* Ban User Modal */}
+      {}
       {selectedUser && selectedUser.action === 'ban' && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-8 max-w-md w-full">
@@ -584,7 +584,7 @@ const AdminDashboard = () => {
         </div>
       )}
 
-      {/* Delete Listing Modal */}
+      {}
       {selectedListing && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-8 max-w-md w-full">

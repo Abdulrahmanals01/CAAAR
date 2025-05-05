@@ -6,7 +6,7 @@ const HostRoute = ({ children }) => {
   const [isAuthorized, setIsAuthorized] = useState(false);
   
   useEffect(() => {
-    // Check authentication and role directly from localStorage
+    
     const token = localStorage.getItem('token');
     const userRole = localStorage.getItem('userRole');
     
@@ -17,7 +17,7 @@ const HostRoute = ({ children }) => {
     setLoading(false);
   }, []);
   
-  // Show loading indicator while checking auth
+  
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -26,12 +26,12 @@ const HostRoute = ({ children }) => {
     );
   }
   
-  // Redirect to login if not authenticated
+  
   if (!localStorage.getItem('token')) {
     return <Navigate to="/login" />;
   }
   
-  // Redirect to home if not a host
+  
   if (!isAuthorized) {
     return (
       <div className="container mx-auto p-4 mt-8">
@@ -43,7 +43,7 @@ const HostRoute = ({ children }) => {
     );
   }
   
-  // Render the protected component
+  
   return children;
 };
 

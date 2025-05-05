@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 const Footer = () => {
   const currentYear = new Date().getFullYear();
 
-  // Vehicle types - with Luxury Car and Electric Vehicle removed
+  
   const vehicleTypes = [
     { name: 'Sedan', url: '/cars?car_type=sedan' },
     { name: 'SUV', url: '/cars?car_type=suv' },

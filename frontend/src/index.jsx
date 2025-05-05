@@ -5,10 +5,8 @@ import App from './App';
 import axios from "./utils/axiosConfig";
 import { initAuthHeaders } from './utils/auth';
 
-// Make axios available globally
 window.axios = axios;
 
-// Initialize authentication headers from localStorage
 initAuthHeaders();
 
 const root = ReactDOM.createRoot(document.getElementById('root'));

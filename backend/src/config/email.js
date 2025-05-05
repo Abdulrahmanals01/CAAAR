@@ -1,12 +1,10 @@
 const nodemailer = require('nodemailer');
 require('dotenv').config();
 
-// Create transport configuration
 let transporter;
 
-// Check if we're in production or development
 if (process.env.NODE_ENV === 'production' && process.env.SMTP_HOST) {
-  // Production email setup
+  
   transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: process.env.SMTP_PORT || 587,
@@ -17,7 +15,7 @@ if (process.env.NODE_ENV === 'production' && process.env.SMTP_HOST) {
     }
   });
 } else {
-  // Development - log emails to console with improved formatting
+  
   console.log('Email service running in development mode - emails will be logged to console');
   transporter = {
     sendMail: async (options) => {
@@ -61,10 +59,10 @@ module.exports = {
     }
   },
 
-  // Helper for support inquiries
+  
   sendSupportConfirmation: async (userEmail, name, subject, message, ticketId) => {
     try {
-      // Email to user confirming their request
+      
       const userMailOptions = {
         to: userEmail,
         subject: 'Your Support Request Has Been Received - Sayarati',
@@ -94,7 +92,7 @@ module.exports = {
         `
       };
 
-      // Email to support team about new inquiry
+      
       const supportMailOptions = {
         to: process.env.SUPPORT_EMAIL || 'AbdulrahmanAlsaadan01@gmail.com',
         subject: `New Support Request: ${subject} [${ticketId}]`,
@@ -119,7 +117,7 @@ module.exports = {
         `
       };
 
-      // Send both emails
+      
       await module.exports.sendEmail(userMailOptions);
       await module.exports.sendEmail(supportMailOptions);
 

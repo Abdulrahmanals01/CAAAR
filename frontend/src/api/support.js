@@ -1,6 +1,5 @@
 import axios from '../utils/axiosConfig';
 
-// Submit a support inquiry
 export const submitSupportInquiry = async (formData) => {
   try {
     const response = await axios.post('/api/support/inquiry', formData);
@@ -17,7 +16,6 @@ export const submitSupportInquiry = async (formData) => {
   }
 };
 
-// Get authenticated user info for support form
 export const getUserInfo = async () => {
   try {
     const response = await axios.get('/api/support/user-info');

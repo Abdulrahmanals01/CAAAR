@@ -37,12 +37,11 @@ const createCarRatingsTable = async () => {
   }
 };
 
-// Create admin tracking tables if they don't exist
 async function createAdminTrackingTables() {
   try {
     console.log('Checking for admin tracking tables...');
 
-    // Check if the tables already exist
+    
     const tableCheck = await db.query(
       "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'admin_actions')"
     );
@@ -50,7 +49,7 @@ async function createAdminTrackingTables() {
     if (!tableCheck.rows[0].exists) {
       console.log('Creating admin tracking tables...');
 
-      // Create deleted_listings table
+      
       await db.query(`
         CREATE TABLE IF NOT EXISTS deleted_listings (
           id SERIAL PRIMARY KEY,
@@ -72,7 +71,7 @@ async function createAdminTrackingTables() {
         CREATE INDEX IF NOT EXISTS idx_deleted_listings_deleted_by ON deleted_listings(deleted_by);
       `);
 
-      // Create admin_actions table
+      
       await db.query(`
         CREATE TABLE IF NOT EXISTS admin_actions (
           id SERIAL PRIMARY KEY,

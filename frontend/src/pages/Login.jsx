@@ -13,7 +13,7 @@ const Login = () => {
   const navigate = useNavigate();
   const { login, isAuthenticated } = useContext(AuthContext);
 
-  // Check if already logged in
+  
   useEffect(() => {
     if (isAuthenticated) {
       navigate('/');
@@ -44,7 +44,7 @@ const Login = () => {
 
       if (result.success) {
         setSuccess(true);
-        // Navigation will happen automatically via the useEffect
+        
       } else {
         if (result.status === 'banned' || result.status === 'frozen') {
           setAccountStatus(result);

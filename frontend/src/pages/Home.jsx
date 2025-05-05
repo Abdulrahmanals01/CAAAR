@@ -9,7 +9,7 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [activeAccordion, setActiveAccordion] = useState(null);
 
-  // Popular destinations
+  
   const destinations = [
     { name: 'Riyadh', icon: '��️' },
     { name: 'Jeddah', icon: '🌊' },
@@ -19,7 +19,7 @@ const Home = () => {
     { name: 'Al Khobar', icon: '🌇' }
   ];
 
-  // FAQ items
+  
   const faqItems = [
     {
       question: 'How do I rent a car on Sayarati?',
@@ -44,7 +44,7 @@ const Home = () => {
   ];
 
   useEffect(() => {
-    // Check authentication status
+    
     const token = localStorage.getItem('token');
     setIsLoggedIn(!!token);
     setLoading(false);
@@ -61,7 +61,7 @@ const Home = () => {
   return (
     <div className="flex flex-col min-h-screen">
       <main className="flex-grow">
-        {/* Hero section with background image */}
+        {}
         <div
           className="relative bg-cover bg-center h-96 flex items-center justify-center"
           style={{
@@ -78,11 +78,11 @@ const Home = () => {
           </div>
         </div>
 
-        {/* Search Bar */}
+        {}
         <SearchBar />
 
         <div className="container mx-auto px-4 py-12">
-          {/* Welcome message */}
+          {}
           <div className="text-center mb-10">
             <h2 className="text-3xl font-bold mb-4">Welcome to Sayarati</h2>
             <p className="text-xl text-gray-600 mb-6">
@@ -98,7 +98,7 @@ const Home = () => {
             )}
           </div>
 
-          {/* How it works section (preserved from original) */}
+          {}
           <div className="mt-16">
             <h2 className="text-2xl font-bold mb-8 text-center">How Sayarati Works</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -126,7 +126,7 @@ const Home = () => {
             </div>
           </div>
 
-          {/* Browse by destination section */}
+          {}
           <div className="mt-16">
             <h2 className="text-2xl font-bold mb-8">Browse by destination</h2>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -143,7 +143,7 @@ const Home = () => {
             </div>
           </div>
 
-          {/* Dual CTA section (Book a car / Become a host) - Only show for non-logged in users */}
+          {}
           {!isLoggedIn && (
             <div className="mt-16 grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="bg-blue-50 p-8 rounded-lg flex flex-col items-center text-center">
@@ -171,7 +171,7 @@ const Home = () => {
             </div>
           )}
 
-          {/* FAQ Section */}
+          {}
           <div className="mt-16">
             <h2 className="text-3xl font-bold mb-8 text-center">Frequently asked questions</h2>
             <div className="max-w-3xl mx-auto space-y-4">

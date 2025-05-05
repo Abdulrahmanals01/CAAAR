@@ -1,13 +1,7 @@
-/**
- * Simple image handling utilities
- */
 
-// Base URL for API
+
 const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-/**
- * Get standardized image URL
- */
 export const getImageUrl = (imagePath, type = '') => {
   if (!imagePath) {
     return `/assets/images/${type || 'car'}-placeholder.jpg`;
@@ -29,9 +23,6 @@ export const getImageUrl = (imagePath, type = '') => {
   return `${BASE_URL}/${fullPath}`;
 };
 
-/**
- * Get placeholder image
- */
 export const getPlaceholderImage = (type = 'car') => {
   return `/assets/images/${type}-placeholder.jpg`;
 };

@@ -1,25 +1,24 @@
 import axios from '../utils/axiosConfig';
 import { getImageUrl } from '../utils/imageUtils';
 
-// Get all cars with optional filters
 export const getCars = async (filters = {}) => {
   try {
-    // Convert filters object to query string
+    
     const queryParams = new URLSearchParams();
 
-    // Add simple key-value filters
+    
     Object.entries(filters).forEach(([key, value]) => {
       if (value && !['features', 'colors'].includes(key)) {
         queryParams.append(key, value);
       }
     });
 
-    // Add features array if it exists
+    
     if (filters.features && filters.features.length > 0) {
       queryParams.append('features', JSON.stringify(filters.features));
     }
 
-    // Add colors array if it exists (new)
+    
     if (filters.colors && filters.colors.length > 0) {
       queryParams.append('colors', JSON.stringify(filters.colors));
     }
@@ -27,17 +26,17 @@ export const getCars = async (filters = {}) => {
     const response = await axios.get(`/api/cars?${queryParams.toString()}`);
     console.log("Raw API response:", response.data);
 
-    // Process and standardize image URLs in the response
+    
     const carsWithFormattedImages = response.data.map(car => {
-      // Process the car object
+      
       let processedCar = { ...car };
 
-      // Format image URL if needed
+      
       if (car.image && !car.image_url) {
       car.image_url = getImageUrl(car.image, 'cars');
     }
 
-      // Ensure latitude and longitude are parsed as numbers if they exist
+      
       if (car.latitude !== undefined && car.latitude !== null) {
         processedCar.latitude = parseFloat(car.latitude);
       }
@@ -49,7 +48,7 @@ export const getCars = async (filters = {}) => {
       return processedCar;
     });
 
-    // Log processed data for debugging
+    
     console.log("Processed cars:", carsWithFormattedImages);
     console.log("Cars with coordinates:", carsWithFormattedImages.filter(car => car.latitude && car.longitude).length); 
 
@@ -63,18 +62,17 @@ export const getCars = async (filters = {}) => {
   }
 };
 
-// Get car by ID
 export const getCarById = async (carId) => {
   try {
     const response = await axios.get(`/api/cars/${carId}`);
 
-    // Process and standardize image URL in the response
+    
     const car = response.data;
     if (car.image && !car.image_url) {
       car.image_url = getImageUrl(car.image, 'cars');
     }
 
-    // Parse coordinates as numbers
+    
     if (car.latitude) car.latitude = parseFloat(car.latitude);
     if (car.longitude) car.longitude = parseFloat(car.longitude);
 
@@ -87,7 +85,6 @@ export const getCarById = async (carId) => {
   }
 };
 
-// Create new car listing
 export const createCar = async (carData) => {
   try {
     const response = await axios.post(`/api/cars`, carData, {
@@ -96,7 +93,7 @@ export const createCar = async (carData) => {
       }
     });
 
-    // Process and standardize image URL in the response
+    
     const newCar = response.data;
     if (newCar.image && !newCar.image_url) {
       newCar.image_url = getImageUrl(newCar.image, 'cars');
@@ -112,7 +109,6 @@ export const createCar = async (carData) => {
   }
 };
 
-// Update car listing
 export const updateCar = async (carId, carData) => {
   try {
     const response = await axios.put(`/api/cars/${carId}`, carData, {
@@ -121,7 +117,7 @@ export const updateCar = async (carId, carData) => {
       }
     });
 
-    // Process and standardize image URL in the response
+    
     const updatedCar = response.data;
     if (updatedCar.image && !updatedCar.image_url) {
       updatedCar.image_url = getImageUrl(updatedCar.image, 'cars');
@@ -136,7 +132,6 @@ export const updateCar = async (carId, carData) => {
   }
 };
 
-// Update car availability only
 export const updateCarAvailability = async (carId, availabilityData) => {
   try {
     const response = await axios.patch(
@@ -144,7 +139,7 @@ export const updateCarAvailability = async (carId, availabilityData) => {
       availabilityData
     );
 
-    // Process and standardize image URL in the response
+    
     const updatedCar = response.data.car;
     if (updatedCar.image && !updatedCar.image_url) {
       updatedCar.image_url = getImageUrl(updatedCar.image, 'cars');
@@ -159,7 +154,6 @@ export const updateCarAvailability = async (carId, availabilityData) => {
   }
 };
 
-// Check if car has active bookings
 export const checkActiveBookings = async (carId) => {
   try {
     const response = await axios.get(`/api/cars/${carId}/active-bookings`);
@@ -172,7 +166,6 @@ export const checkActiveBookings = async (carId) => {
   }
 };
 
-// Delete car listing
 export const deleteCar = async (carId) => {
   try {
     await axios.delete(`/api/cars/${carId}`);
@@ -185,18 +178,17 @@ export const deleteCar = async (carId) => {
   }
 };
 
-// Get host's cars
 export const getHostCars = async () => {
   try {
     const response = await axios.get(`/api/cars/owner`);
 
-    // Process and standardize image URLs in the response
+    
     const carsWithFormattedImages = response.data.map(car => {
       if (car.image && !car.image_url) {
       car.image_url = getImageUrl(car.image, 'cars');
     }
 
-      // Parse coordinates as numbers
+      
       if (car.latitude) car.latitude = parseFloat(car.latitude);
       if (car.longitude) car.longitude = parseFloat(car.longitude);
 

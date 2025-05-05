@@ -23,7 +23,7 @@ export const AuthProvider = ({ children }) => {
         setUser(parsedUser);
         axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         
-        // Ensure userRole is also set in localStorage
+        
         setUserData(parsedUser);
       } catch (error) {
         console.error('Error parsing user data:', error);
@@ -40,13 +40,13 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
       
-      // Also set userRole in localStorage
+      
       setUserData(user);
       
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       setUser(user);
 
-      // Redirect admin to admin dashboard, others to home page
+      
       if (user.role === 'admin') {
         navigate('/admin/dashboard');
       } else {
@@ -57,7 +57,7 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('Login error:', error);
 
-      // Handle banned or frozen account errors
+      
       if (error.response && error.response.status === 403) {
         return {
           success: false,
@@ -82,7 +82,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
       
-      // Also set userRole in localStorage
+      
       setUserData(user);
       
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
@@ -99,7 +99,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    clearAuth(); // Use the clearAuth utility function
+    clearAuth(); 
     setUser(null);
     navigate('/login');
   };
@@ -109,7 +109,7 @@ export const AuthProvider = ({ children }) => {
     setUser(updatedUser);
     localStorage.setItem('user', JSON.stringify(updatedUser));
     
-    // Also update userRole in localStorage
+    
     setUserData(updatedUser);
   };
 

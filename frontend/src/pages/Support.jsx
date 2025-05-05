@@ -17,7 +17,7 @@ const Support = () => {
   const isAuthenticated = localStorage.getItem('token') !== null;
 
   useEffect(() => {
-    // If user is authenticated, get their information
+    
     if (isAuthenticated) {
       fetchUserInfo();
     }
@@ -56,7 +56,7 @@ const Support = () => {
     setSuccess('');
     setTicketId('');
 
-    // Validate form
+    
     if (!formData.name.trim() || !formData.email.trim() ||
         !formData.subject.trim() || !formData.message.trim()) {
       setError('All fields are required');
@@ -64,7 +64,7 @@ const Support = () => {
       return;
     }
 
-    // Email validation
+    
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
       setError('Please enter a valid email address');
@@ -81,7 +81,7 @@ const Support = () => {
           setTicketId(result.data.ticketId);
         }
         
-        // Reset form fields except for name and email if the user is authenticated
+        
         setFormData(prevState => ({
           name: isAuthenticated ? prevState.name : '',
           email: isAuthenticated ? prevState.email : '',

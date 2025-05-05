@@ -23,23 +23,26 @@ const SearchBar = () => {
   const handleSearch = (e) => {
     e.preventDefault();
 
-    // Create query string from search parameters
+    // Use location as-is - the backend will normalize it
+    // This ensures consistent results whether someone searches for "Riyadh" or "Riyadh, Saudi Arabia"
+    let location = searchParams.location.trim();
+    
     const queryString = new URLSearchParams({
-      location: searchParams.location,
+      location: location,
       startDate: searchParams.startDate,
       endDate: searchParams.endDate,
       startTime: searchParams.startTime,
       endTime: searchParams.endTime
     }).toString();
 
-    // Navigate to the main car search page with query parameters
+    
     navigate(`/cars?${queryString}`);
   };
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-4 max-w-6xl mx-auto -mt-8 relative z-10">
       <form onSubmit={handleSearch} className="flex flex-col lg:flex-row gap-4">
-        {/* Location */}
+        {}
         <div className="flex-grow">
           <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">Where</label>
           <input
@@ -54,9 +57,9 @@ const SearchBar = () => {
           />
         </div>
 
-        {/* Date and time selectors */}
+        {}
         <div className="flex flex-wrap lg:flex-nowrap lg:w-3/5 gap-4">
-          {/* From date and time */}
+          {}
           <div className="w-full sm:w-1/2">
             <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-1">From</label>
             <div className="flex">
@@ -84,7 +87,7 @@ const SearchBar = () => {
             </div>
           </div>
 
-          {/* Until date and time */}
+          {}
           <div className="w-full sm:w-1/2">
             <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-1">Until</label>
             <div className="flex">
@@ -114,7 +117,7 @@ const SearchBar = () => {
           </div>
         </div>
 
-        {/* Search button */}
+        {}
         <div className="flex items-end">
           <button
             type="submit"

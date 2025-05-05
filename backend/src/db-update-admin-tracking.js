@@ -4,7 +4,7 @@ const path = require('path');
 
 async function createAdminTrackingTables() {
   try {
-    // Read and execute the SQL file
+    
     console.log('Creating admin tracking tables...');
     const sqlPath = path.join(__dirname, 'migrations', 'create_admin_tracking_tables.sql');
     const sql = fs.readFileSync(sqlPath, 'utf8');
@@ -18,12 +18,10 @@ async function createAdminTrackingTables() {
   }
 }
 
-// Export the function for use in app.js
 module.exports = {
   createAdminTrackingTables
 };
 
-// If script is run directly, execute the function
 if (require.main === module) {
   createAdminTrackingTables()
     .then(() => {

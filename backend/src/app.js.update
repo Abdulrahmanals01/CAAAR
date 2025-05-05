@@ -1,6 +1,0 @@
-// Add this line near the top of your file with other imports
-const setupExpiredBookingChecker = require('../checkExpiredBookings');
-
-// Add this line after your app is created (after const app = express();)
-// and after all middleware is set up, but before starting the server
-setupExpiredBookingChecker(app);

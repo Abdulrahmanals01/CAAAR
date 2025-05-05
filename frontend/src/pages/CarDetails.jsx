@@ -27,23 +27,23 @@ const CarDetails = () => {
       try {
         const response = await getCarById(id);
         if (response.success) {
-          // Ensure image URL is properly formatted
+          
           const carData = response.data;
           if (carData.image && !carData.image_url) {
             carData.image_url = getImageUrl(carData.image, 'cars');
           }
           
-          // Ensure host_rating is a number
+          
           if (carData.host_rating) {
             carData.host_rating = parseFloat(carData.host_rating);
           }
           
           setCar(carData);
 
-          // Check if the current user is the owner of this car
+          
           setIsOwner(carData.user_id === userId);
 
-          // Fetch car ratings
+          
           const ratingsResponse = await getCarRatings(id);
           if (ratingsResponse.success) {
             setRatings(ratingsResponse.data);
@@ -95,7 +95,7 @@ const CarDetails = () => {
   return (
     <div className="container mx-auto p-6">
       <div className="bg-white shadow-md rounded-lg overflow-hidden mb-8">
-        {/* Tabs Navigation */}
+        {}
         <div className="border-b border-gray-200">
           <div className="flex">
             <button
@@ -141,10 +141,10 @@ const CarDetails = () => {
           </div>
         </div>
 
-        {/* Main content */}
+        {}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 p-6">
           <div className="md:col-span-2">
-            {/* Car Image */}
+            {}
             {car.image_url ? (
               <img
                 src={car.image_url}
@@ -164,7 +164,7 @@ const CarDetails = () => {
               <p className="text-gray-600">{car.location}</p>
             </div>
 
-            {/* Car rating summary */}
+            {}
             <div className="flex items-center mb-6">
               <div className="text-2xl font-bold mr-2">{averageRating.toFixed(1)}</div>
               <StarRating rating={averageRating} size="md" />
@@ -178,7 +178,7 @@ const CarDetails = () => {
               )}
             </div>
 
-            {/* Tab Content */}
+            {}
             {activeTab === 'overview' && (
               <div>
                 <div className="grid grid-cols-2 gap-4 mb-6">
@@ -211,7 +211,7 @@ const CarDetails = () => {
                   </div>
                 )}
 
-                {/* Host Information */}
+                {}
                 <div className="border-t border-gray-200 pt-6 mt-6">
                   <h3 className="text-lg font-semibold mb-4">HOSTED BY</h3>
                   <div className="flex items-start">
@@ -339,7 +339,7 @@ const CarDetails = () => {
 
                     <p className="text-gray-600 mb-6">Based on {totalRatings} guest ratings</p>
 
-                    {/* Individual reviews */}
+                    {}
                     <div className="space-y-8">
                       {ratings.ratings.map((review) => (
                         <div key={review.id} className="border-b border-gray-200 pb-6">

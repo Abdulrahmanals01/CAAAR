@@ -9,7 +9,7 @@ const AdminRoute = ({ children, element }) => {
   });
 
   useEffect(() => {
-    // Check if token exists in localStorage
+    
     const token = localStorage.getItem('token');
     const userStr = localStorage.getItem('user');
     if (token && userStr) {
@@ -48,7 +48,7 @@ const AdminRoute = ({ children, element }) => {
     return <Navigate to="/" />;
   }
 
-  // Support both patterns: children prop and element prop
+  
   return element || children;
 };
 

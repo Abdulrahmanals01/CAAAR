@@ -2,13 +2,13 @@ const db = require('./config/database');
 
 async function autoCompleteExpiredBookings() {
   try {
-    // Get a client from the pool for transaction
+    
     const client = await db.pool.connect();
     
     try {
       await client.query('BEGIN');
       
-      // Find all accepted bookings where end_date has passed
+      
       const expiredBookingsQuery = `
         UPDATE bookings
         SET status = 'completed'
@@ -22,7 +22,7 @@ async function autoCompleteExpiredBookings() {
       if (result.rows.length > 0) {
         console.log(`Auto-completed ${result.rows.length} bookings that have ended.`);
         
-        // Send notification messages for each completed booking
+        
         for (const booking of result.rows) {
           const messageQuery = `
             INSERT INTO messages (sender_id, receiver_id, booking_id, message, created_at)
@@ -54,7 +54,6 @@ async function autoCompleteExpiredBookings() {
   }
 }
 
-// Run this function periodically
 if (require.main === module) {
   autoCompleteExpiredBookings()
     .then(() => process.exit(0))

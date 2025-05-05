@@ -6,10 +6,8 @@ const carController = require('../controllers/carController');
 const authMiddleware = require('../middleware/auth');
 const upload = require('../config/multer');
 
-// GET - Get host's cars (must come BEFORE the /:id route)
 router.get('/owner', authMiddleware.authenticate, authMiddleware.isHost, carController.getHostCars);
 
-// POST - Create a new car listing
 router.post(
   '/',
   authMiddleware.authenticate,
@@ -30,16 +28,12 @@ router.post(
   carController.createCar
 );
 
-// GET - Get all cars (public endpoint)
 router.get('/', carController.getCars);
 
-// GET - Get car by ID (public endpoint)
 router.get('/:id', carController.getCarById);
 
-// DELETE - Delete car by ID
 router.delete('/:id', authMiddleware.authenticate, authMiddleware.isHost, carController.deleteCar);
 
-// PATCH - Update car availability
 router.patch(
   '/:id/availability',
   authMiddleware.authenticate,
@@ -51,10 +45,8 @@ router.patch(
   carController.updateCarAvailability
 );
 
-// GET - Check if car has active bookings
 router.get('/:id/active-bookings', authMiddleware.authenticate, authMiddleware.isHost, carController.checkActiveBookings);
 
-// Get car availability
 router.get("/:id/availability", authMiddleware.authenticate, bookingController.getCarAvailability);
 
 module.exports = router;

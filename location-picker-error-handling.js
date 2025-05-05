@@ -1,10 +1,9 @@
-// Add this at the beginning of the useLayoutEffect in LocationPicker.jsx
+
 window.gm_authFailure = () => {
   setError('Google Maps API key is invalid or has expired. Please contact support.');
   setIsLoading(false);
 };
 
-// Update the error handling in the catch block
 } catch (err) {
   if (!isMounted) return;
 

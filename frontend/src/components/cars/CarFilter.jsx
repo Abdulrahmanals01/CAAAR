@@ -17,7 +17,7 @@ const CarFilter = ({ onFilterChange }) => {
 
     if (type === 'checkbox') {
       if (name.startsWith('color-')) {
-        // Handle color checkbox
+        
         const color = name.replace('color-', '');
         let updatedColors = [...filters.colors];
         
@@ -34,7 +34,7 @@ const CarFilter = ({ onFilterChange }) => {
           colors: updatedColors
         });
       } else {
-        // Handle feature checkbox
+        
         let updatedFeatures = [...filters.features];
         
         if (checked) {
@@ -51,7 +51,7 @@ const CarFilter = ({ onFilterChange }) => {
         });
       }
     } else {
-      // Handle other inputs (select, number, etc.)
+      
       setFilters({
         ...filters,
         [name]: value
@@ -59,7 +59,7 @@ const CarFilter = ({ onFilterChange }) => {
     }
   };
 
-  // Apply filters whenever they change
+  
   useEffect(() => {
     onFilterChange(filters);
   }, [filters, onFilterChange]);
@@ -68,7 +68,7 @@ const CarFilter = ({ onFilterChange }) => {
     <div>
       <h3 className="text-xl font-semibold mb-4">Filters</h3>
 
-      {/* Price range */}
+      {}
       <div className="mb-6">
         <h4 className="font-medium mb-2">Price range (SAR)</h4>
         <div className="flex items-center space-x-2">
@@ -94,7 +94,7 @@ const CarFilter = ({ onFilterChange }) => {
         </div>
       </div>
 
-      {/* Year range - NEW */}
+      {}
       <div className="mb-6">
         <h4 className="font-medium mb-2">Year range</h4>
         <div className="flex items-center space-x-2">
@@ -124,7 +124,7 @@ const CarFilter = ({ onFilterChange }) => {
         </div>
       </div>
 
-      {/* Car type */}
+      {}
       <div className="mb-6">
         <h4 className="font-medium mb-2">Car type</h4>
         <select
@@ -140,7 +140,7 @@ const CarFilter = ({ onFilterChange }) => {
         </select>
       </div>
 
-      {/* Colors - NEW */}
+      {}
       <div className="mb-6">
         <h4 className="font-medium mb-2">Colors</h4>
         <div className="grid grid-cols-2 gap-2">
@@ -159,7 +159,7 @@ const CarFilter = ({ onFilterChange }) => {
         </div>
       </div>
 
-      {/* Features */}
+      {}
       <div className="mb-4">
         <h4 className="font-medium mb-2">Features</h4>
         <div className="space-y-2">

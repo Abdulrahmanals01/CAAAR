@@ -1,6 +1,0 @@
-// Add this near the top of your app.js, after other requires
-const startScheduler = require('./scheduleTasks');
-
-// Then add this after createAdminTrackingTables();
-// Start scheduler for auto-complete and auto-reject
-startScheduler();

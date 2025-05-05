@@ -44,7 +44,7 @@ const ManageCars = () => {
     setActionInProgress(true);
     setStatusMessage('');
 
-    // First check if car has active bookings
+    
     try {
       const activeBookingsCheck = await checkActiveBookings(carId);
 
@@ -60,12 +60,12 @@ const ManageCars = () => {
         return;
       }
 
-      // Proceed with deletion if no active bookings
+      
       const response = await deleteCar(carId);
 
       if (response.success) {
         setStatusMessage('Car deleted successfully!');
-        // Remove the car from state
+        
         setCars(cars.filter(car => car.id !== carId));
       } else {
         setStatusMessage(response.error || 'Failed to delete car. Please try again.');
@@ -88,13 +88,13 @@ const ManageCars = () => {
   };
 
   const handleAvailabilityUpdated = (updatedCar) => {
-    // Update the car in the state
+    
     setCars(cars.map(car =>
       car.id === updatedCar.id ? { ...car, ...updatedCar } : car
     ));
     setStatusMessage('Availability updated successfully!');
 
-    // Close the modal
+    
     setIsEditModalOpen(false);
     setSelectedCar(null);
   };
@@ -181,7 +181,7 @@ const ManageCars = () => {
         </div>
       )}
 
-      {/* Edit Availability Modal */}
+      {}
       {selectedCar && (
         <EditAvailabilityModal
           car={selectedCar}

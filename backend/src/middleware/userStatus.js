@@ -4,7 +4,7 @@ exports.checkUserStatus = async (req, res, next) => {
   try {
     const userId = req.user.id;
 
-    // Get user status from database
+    
     const result = await db.query(
       'SELECT status, ban_reason, freeze_reason, freeze_until FROM users WHERE id = $1',
       [userId]
@@ -16,13 +16,13 @@ exports.checkUserStatus = async (req, res, next) => {
 
     const user = result.rows[0];
 
-    // Check if the route is related to active bookings
+    
     const isActiveBookingRequest = req.originalUrl.includes('/api/bookings/') || 
                                   req.originalUrl.includes('/api/messages/');
 
-    // If this is an active booking request, check if the user has any active bookings
+    
     if ((user.status === 'banned' || user.status === 'frozen') && isActiveBookingRequest) {
-      // For frozen users that have their freeze period expired, automatically unfreeze them
+      
       if (user.status === 'frozen' && user.freeze_until && new Date(user.freeze_until) < new Date()) {
         await db.query(
           'UPDATE users SET status = $1, freeze_until = NULL, freeze_reason = NULL WHERE id = $2',
@@ -32,7 +32,7 @@ exports.checkUserStatus = async (req, res, next) => {
         return;
       }
 
-      // Check if the user has any active bookings (as renter or host)
+      
       const activeBookingsCheck = await db.query(`
         SELECT COUNT(*) AS count FROM (
           SELECT id FROM bookings 
@@ -44,9 +44,9 @@ exports.checkUserStatus = async (req, res, next) => {
         ) AS active_bookings
       `, [userId]);
 
-      // Allow access if the user has active bookings
+      
       if (activeBookingsCheck.rows[0].count > 0) {
-        // Only allow access to booking and message related routes
+        
         if (req.originalUrl.includes('/api/bookings') || req.originalUrl.includes('/api/messages')) {
           next();
           return;
@@ -54,7 +54,7 @@ exports.checkUserStatus = async (req, res, next) => {
       }
     }
 
-    // Check if user is banned
+    
     if (user.status === 'banned') {
       return res.status(403).json({
         message: 'Your account has been banned',
@@ -63,11 +63,11 @@ exports.checkUserStatus = async (req, res, next) => {
       });
     }
 
-    // Check if user is frozen
+    
     if (user.status === 'frozen') {
-      // Check if freeze period has expired
+      
       if (user.freeze_until && new Date(user.freeze_until) < new Date()) {
-        // Automatically unfreeze the user
+        
         await db.query(
           'UPDATE users SET status = $1, freeze_until = NULL, freeze_reason = NULL WHERE id = $2',
           ['active', userId]

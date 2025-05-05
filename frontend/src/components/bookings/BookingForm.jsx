@@ -16,16 +16,16 @@ const BookingForm = ({ car }) => {
   const [success, setSuccess] = useState(false);
   const [totalPrice, setTotalPrice] = useState(0);
 
-  // Check if user is the car owner
+  
   const isOwnCar = car && car.user_id === user?.id;
 
-  // Set initial dates to car's availability period
+  
   useEffect(() => {
     if (car) {
       const today = new Date().toISOString().split('T')[0];
       const availabilityStart = car.availability_start;
 
-      // Choose the later date between today and availability_start
+      
       const startDate = today > availabilityStart ? today : availabilityStart;
 
       setFormData({
@@ -35,7 +35,7 @@ const BookingForm = ({ car }) => {
     }
   }, [car]);
 
-  // Calculate total price whenever dates change
+  
   useEffect(() => {
     if (formData.start_date && formData.end_date && car) {
       const start = new Date(formData.start_date);
@@ -58,7 +58,7 @@ const BookingForm = ({ car }) => {
     setLoading(true);
     setError('');
 
-    // Prevent booking own car
+    
     if (isOwnCar) {
       setError('You cannot book your own car');
       setLoading(false);
@@ -76,16 +76,16 @@ const BookingForm = ({ car }) => {
 
       if (response.success) {
         setSuccess(true);
-        // Save the current user role to ensure we don't lose it during redirection
+        
         const currentRole = user.role;
         
-        // Redirect to booking history after a short delay
+        
         setTimeout(() => {
-          // Before navigating, ensure the userRole in localStorage is still correct
+          
           if (localStorage.getItem('userRole') !== currentRole) {
             localStorage.setItem('userRole', currentRole);
           }
-          navigate('/booking-history');
+          navigate('/dashboard/renter');
         }, 2000);
       } else {
         throw new Error(response.error);
@@ -97,7 +97,7 @@ const BookingForm = ({ car }) => {
     }
   };
 
-  // Don't show booking form for hosts, car owners, admin users, or if the car details aren't loaded
+  
   if (user?.role === 'host' || user?.role === 'admin' || isOwnCar || !car) {
     return null;
   }

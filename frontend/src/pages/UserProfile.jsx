@@ -14,13 +14,13 @@ const UserProfile = () => {
   const [ratings, setRatings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState('about'); // Only options now are 'about' and 'reviews'
+  const [activeTab, setActiveTab] = useState('about'); 
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Fetch user profile
+        
         const profileResponse = await getUserProfile(userId);
         
         if (!profileResponse.success) {
@@ -29,7 +29,7 @@ const UserProfile = () => {
         
         setProfile(profileResponse.data);
         
-        // Fetch user ratings
+        
         const ratingsResponse = await getUserRatings(userId);
         
         if (!ratingsResponse.success) {
@@ -87,7 +87,7 @@ const UserProfile = () => {
   return (
     <div className="container mx-auto p-6">
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        {/* Profile Header */}
+        {}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6">
           <div className="md:col-span-1">
             <div className="flex flex-col items-center">
@@ -151,7 +151,7 @@ const UserProfile = () => {
           </div>
 
           <div className="md:col-span-2">
-            {/* Tabs Navigation */}
+            {}
             <div className="border-b border-gray-200 mb-6">
               <nav className="-mb-px flex">
                 <button
@@ -177,16 +177,16 @@ const UserProfile = () => {
               </nav>
             </div>
 
-            {/* Tab Content */}
+            {}
             <div className="p-1">
-              {/* About Tab */}
+              {}
               {activeTab === 'about' && (
                 <div>
                   <h2 className="text-xl font-semibold mb-4">About {user.name}</h2>
                   
                   <div className="bg-gray-50 p-4 rounded-lg mb-6">
                     <h3 className="text-lg font-medium mb-2">Welcome Guests</h3>
-                    {/* If bio exists, show it here */}
+                    {}
                     <p className="text-gray-700">
                       {user.bio || `${user.name} is a ${isHost ? 'host' : 'renter'} on Sayarati.`}
                     </p>
@@ -237,7 +237,7 @@ const UserProfile = () => {
                             </Link>
                           ) : (
                             <Link 
-                              to="/booking-history" 
+                              to="/dashboard/renter" 
                               className="block w-full text-center bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded"
                             >
                               View Your Bookings
@@ -250,7 +250,7 @@ const UserProfile = () => {
                 </div>
               )}
               
-              {/* Reviews Tab */}
+              {}
               {activeTab === 'reviews' && (
                 <div>
                   <div className="flex items-center mb-4">

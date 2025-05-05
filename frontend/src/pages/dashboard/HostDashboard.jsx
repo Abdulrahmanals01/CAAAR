@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import useAuth from '../../hooks/useAuth';
 import { deleteCar, checkActiveBookings } from '../../api/cars';
+import { getUserRatings, createRating, checkRatingEligibility } from '../../api/ratings';
+import StarRating from '../../components/common/StarRating';
 
 const HostDashboard = () => {
   const [activeTab, setActiveTab] = useState('pending');
@@ -18,6 +20,12 @@ const HostDashboard = () => {
     activeCars: 0,
     averageRating: 0
   });
+  const [ratingEligibility, setRatingEligibility] = useState({});
+  const [ratingBookingId, setRatingBookingId] = useState(null);
+  const [ratingValue, setRatingValue] = useState(0);
+  const [ratingComment, setRatingComment] = useState('');
+  const [ratingError, setRatingError] = useState('');
+  const [ratingSuccess, setRatingSuccess] = useState(false);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -42,15 +50,15 @@ const HostDashboard = () => {
         }
       };
 
-      // Get host's cars
+      
       const carsResponse = await axios.get('http://localhost:5000/api/cars/owner', config);
       setCurrentListings(carsResponse.data);
 
-      // Get all bookings - the backend should already filter for host's cars
+      
       const bookingsResponse = await axios.get('http://localhost:5000/api/bookings/user', config);
       console.log('Raw bookings response:', bookingsResponse.data);
 
-      // For hosts, filter bookings to show only those for their cars
+      
       const hostBookings = bookingsResponse.data.filter(booking =>
         booking.host_id === user.id || booking.car_user_id === user.id
       );
@@ -58,8 +66,13 @@ const HostDashboard = () => {
       console.log('Filtered host bookings:', hostBookings);
       setBookingRequests(hostBookings);
 
-      // Calculate statistics
-      calculateStatistics(carsResponse.data, hostBookings);
+      // Check rating eligibility for completed bookings
+      const completedBookings = hostBookings.filter(booking => booking.status === 'completed');
+      for (const booking of completedBookings) {
+        await checkRatingEligibilityForBooking(booking.id);
+      }
+      
+      await calculateStatistics(carsResponse.data, hostBookings);
 
       setLoading(false);
     } catch (err) {
@@ -69,26 +82,57 @@ const HostDashboard = () => {
     }
   };
 
-  const calculateStatistics = (cars, bookings) => {
-    const completedBookings = bookings.filter(b => b.status === 'completed');
-    const totalEarnings = completedBookings.reduce((sum, booking) => sum + Number(booking.total_price), 0);
-
-    setStatistics({
-      totalEarnings,
-      totalBookings: bookings.length,
-      activeCars: cars.length,
-      averageRating: 4.5 // Placeholder - should calculate from actual ratings
-    });
+  const calculateStatistics = async (cars, bookings) => {
+    try {
+      const completedBookings = bookings.filter(b => b.status === 'completed');
+      const totalEarnings = completedBookings.reduce((sum, booking) => sum + Number(booking.total_price), 0);
+      
+      // Count active cars (those available for booking)
+      const activeCars = cars.filter(car => car.is_available !== false).length;
+      
+      // Fetch the user's ratings from the API
+      const ratingsResponse = await getUserRatings(user.id);
+      
+      let averageRating = 0;
+      if (ratingsResponse.success && ratingsResponse.data) {
+        // Use the average rating from the API response
+        averageRating = ratingsResponse.data.averageRating || 0;
+        
+        // Round to 1 decimal place for display
+        averageRating = Math.round(averageRating * 10) / 10;
+      }
+      
+      setStatistics({
+        totalEarnings,
+        totalBookings: bookings.length,
+        activeCars,
+        averageRating
+      });
+    } catch (error) {
+      console.error('Error calculating statistics:', error);
+      
+      // Set statistics with available data even if ratings fetch fails
+      const completedBookings = bookings.filter(b => b.status === 'completed');
+      const totalEarnings = completedBookings.reduce((sum, booking) => sum + Number(booking.total_price), 0);
+      const activeCars = cars.filter(car => car.is_available !== false).length;
+      
+      setStatistics({
+        totalEarnings,
+        totalBookings: bookings.length,
+        activeCars,
+        averageRating: 0
+      });
+    }
   };
 
-  // Filter bookings by status
+  
   const pendingRequests = bookingRequests.filter(booking => booking.status === 'pending');
   const currentTrips = bookingRequests.filter(booking => booking.status === 'accepted');
   const pastTrips = bookingRequests.filter(booking =>
     ['rejected', 'canceled', 'completed'].includes(booking.status)
   );
 
-  // Get displayed bookings based on active tab
+  
   const displayedRequests =
     activeTab === 'current' ? currentTrips :
     activeTab === 'pending' ? pendingRequests :
@@ -109,7 +153,7 @@ const HostDashboard = () => {
     setStatusMessage('');
     
     try {
-      // First check if car has active bookings
+      
       const activeBookingsCheck = await checkActiveBookings(carId);
       
       if (!activeBookingsCheck.success) {
@@ -124,12 +168,12 @@ const HostDashboard = () => {
         return;
       }
       
-      // Proceed with deletion if no active bookings
+      
       const response = await deleteCar(carId);
       
       if (response.success) {
         setStatusMessage('Car listing deleted successfully!');
-        // Remove the car from state
+        
         setCurrentListings(currentListings.filter(car => car.id !== carId));
       } else {
         setStatusMessage(response.error || 'Failed to delete car. Please try again.');
@@ -149,7 +193,7 @@ const HostDashboard = () => {
         { status: 'accepted' },
         { headers: { 'Authorization': `Bearer ${token}` } }
       );
-      fetchHostData(); // Refresh data
+      fetchHostData(); 
     } catch (err) {
       console.error('Error accepting booking:', err);
       alert('Failed to accept booking: ' + (err.response?.data?.message || err.message));
@@ -163,7 +207,7 @@ const HostDashboard = () => {
         { status: 'rejected' },
         { headers: { 'Authorization': `Bearer ${token}` } }
       );
-      fetchHostData(); // Refresh data
+      fetchHostData(); 
     } catch (err) {
       console.error('Error rejecting booking:', err);
       alert('Failed to reject booking: ' + (err.response?.data?.message || err.message));
@@ -177,10 +221,110 @@ const HostDashboard = () => {
         { status: 'completed' },
         { headers: { 'Authorization': `Bearer ${token}` } }
       );
-      fetchHostData(); // Refresh data
+      fetchHostData();
+      // Check rating eligibility right after completing a booking
+      await checkRatingEligibilityForBooking(bookingId); 
     } catch (err) {
       console.error('Error completing booking:', err);
       alert('Failed to complete booking: ' + (err.response?.data?.message || err.message));
+    }
+  };
+  
+  // Function to check if host can rate a renter for a booking
+  const checkRatingEligibilityForBooking = async (bookingId) => {
+    try {
+      const response = await checkRatingEligibility(bookingId);
+      
+      if (response.success) {
+        setRatingEligibility(prev => ({
+          ...prev,
+          [bookingId]: response.data
+        }));
+        return response.data;
+      } else {
+        console.warn(`Error checking eligibility for booking ${bookingId}: ${response.error}`);
+        return null;
+      }
+    } catch (err) {
+      console.error(`Error checking rating eligibility for booking ${bookingId}:`, err);
+      return null;
+    }
+  };
+  
+  // Function to handle opening the rating modal
+  const handleOpenRatingModal = async (bookingId) => {
+    // Reset rating form
+    setRatingValue(0);
+    setRatingComment('');
+    setRatingError('');
+    setRatingSuccess(false);
+    
+    // Check eligibility if not already checked
+    if (!ratingEligibility[bookingId]) {
+      await checkRatingEligibilityForBooking(bookingId);
+    }
+    
+    // Set the booking ID for rating
+    setRatingBookingId(bookingId);
+  };
+  
+  // Function to close the rating modal
+  const handleCloseRatingModal = () => {
+    setRatingBookingId(null);
+  };
+  
+  // Function to submit a rating
+  const handleSubmitRating = async (e) => {
+    e.preventDefault();
+    setRatingError('');
+    
+    if (ratingValue < 1) {
+      setRatingError('Please provide a rating (1-5 stars)');
+      return;
+    }
+    
+    try {
+      // Find the booking
+      const booking = bookingRequests.find(b => b.id === ratingBookingId);
+      if (!booking) {
+        setRatingError('Booking not found');
+        return;
+      }
+      
+      const ratingData = {
+        booking_id: ratingBookingId,
+        rating_for: booking.renter_id,
+        car_id: booking.car_id,
+        rating: ratingValue,
+        comment: ratingComment
+      };
+      
+      const response = await createRating(ratingData);
+      
+      if (response.success) {
+        setRatingSuccess(true);
+        
+        // Update eligibility after successful rating
+        setRatingEligibility(prev => ({
+          ...prev,
+          [ratingBookingId]: {
+            ...prev[ratingBookingId],
+            eligible: false,
+            hasRated: true
+          }
+        }));
+        
+        // Close modal after 2 seconds
+        setTimeout(() => {
+          handleCloseRatingModal();
+          fetchHostData(); // Refresh data after rating
+        }, 2000);
+      } else {
+        setRatingError(response.error || 'Failed to submit rating');
+      }
+    } catch (err) {
+      setRatingError('An error occurred while submitting your rating');
+      console.error('Rating submission error:', err);
     }
   };
 
@@ -202,11 +346,11 @@ const HostDashboard = () => {
         </div>
       )}
 
-      {/* Statistics Cards */}
+      {/* Host Stats Summary */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <div className="bg-white p-6 rounded-lg shadow">
           <h3 className="text-gray-500 text-sm">Total Earnings</h3>
-          <p className="text-2xl font-bold">${statistics.totalEarnings}</p>
+          <p className="text-2xl font-bold">${statistics.totalEarnings.toFixed(2)}</p>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
           <h3 className="text-gray-500 text-sm">Total Bookings</h3>
@@ -218,11 +362,15 @@ const HostDashboard = () => {
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
           <h3 className="text-gray-500 text-sm">Average Rating</h3>
-          <p className="text-2xl font-bold">{statistics.averageRating} ★</p>
+          <p className="text-2xl font-bold">
+            {statistics.averageRating > 0 
+              ? `${statistics.averageRating} ★` 
+              : 'N/A'}
+          </p>
         </div>
       </div>
 
-      {/* Quick Actions */}
+      {}
       <div className="flex gap-4 mb-8">
         <Link
           to="/list-car"
@@ -246,7 +394,7 @@ const HostDashboard = () => {
 
       <h2 className="text-2xl font-bold mb-6">Booking Requests</h2>
 
-      {/* Tabs */}
+      {}
       <div className="border-b border-gray-200 mb-6">
         <nav className="flex -mb-px">
           <button
@@ -282,7 +430,7 @@ const HostDashboard = () => {
         </nav>
       </div>
 
-      {/* Bookings Display */}
+      {}
       {displayedRequests.length === 0 ? (
         <div className="bg-gray-100 p-8 rounded-lg text-center">
           <h2 className="text-xl font-semibold mb-3">No bookings to display</h2>
@@ -365,6 +513,26 @@ const HostDashboard = () => {
                         Mark as Completed
                       </button>
                     )}
+                    {booking.status === 'completed' && (
+                      <>
+                        {ratingEligibility[booking.id]?.eligible && (
+                          <button
+                            onClick={() => handleOpenRatingModal(booking.id)}
+                            className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600"
+                          >
+                            Rate Renter
+                          </button>
+                        )}
+                        {ratingEligibility[booking.id]?.hasRated && (
+                          <span className="inline-flex items-center bg-green-100 text-green-800 px-4 py-2 rounded">
+                            <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                            Rated
+                          </span>
+                        )}
+                      </>
+                    )}
                     <Link
                       to={`/messages/${booking.renter_id}`}
                       className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
@@ -385,7 +553,7 @@ const HostDashboard = () => {
         </div>
       )}
 
-      {/* Car Listings Section */}
+      {}
       <h2 className="text-2xl font-bold mb-6 mt-12">Your Car Listings</h2>
 
       {currentListings.length === 0 ? (
@@ -452,6 +620,71 @@ const HostDashboard = () => {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Rating Modal */}
+      {ratingBookingId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h2 className="text-xl font-semibold mb-4">
+              Rate Renter
+            </h2>
+            
+            {ratingError && (
+              <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 mb-4 rounded">
+                {ratingError}
+              </div>
+            )}
+            
+            {ratingSuccess && (
+              <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-3 mb-4 rounded">
+                Rating submitted successfully!
+              </div>
+            )}
+            
+            <form onSubmit={handleSubmitRating}>
+              <div className="mb-6">
+                <label className="block text-gray-700 mb-2">
+                  Rate the renter:
+                </label>
+                <StarRating 
+                  rating={ratingValue}
+                  size="lg"
+                  interactive={true}
+                  onChange={setRatingValue}
+                />
+              </div>
+              
+              <div className="mb-6">
+                <label className="block text-gray-700 mb-2">Comment (optional):</label>
+                <textarea
+                  className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows="3"
+                  value={ratingComment}
+                  onChange={(e) => setRatingComment(e.target.value)}
+                  placeholder="Share your experience with this renter..."
+                ></textarea>
+              </div>
+              
+              <div className="flex justify-end space-x-2">
+                <button
+                  type="button"
+                  onClick={handleCloseRatingModal}
+                  className="px-4 py-2 border border-gray-300 rounded shadow-sm text-gray-700 bg-white hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 border border-transparent rounded shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  disabled={ratingSuccess}
+                >
+                  {ratingSuccess ? 'Submitted' : 'Submit Rating'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

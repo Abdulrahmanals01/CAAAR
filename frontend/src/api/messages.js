@@ -1,7 +1,6 @@
 import axios from 'axios';
 const API_URL = 'http://localhost:5000'; // Use direct URL to avoid environment variable issues
 
-// Configure axios with auth token
 const getAuthHeader = () => {
   const token = localStorage.getItem('token');
   if (!token) {
@@ -14,7 +13,6 @@ const getAuthHeader = () => {
   };
 };
 
-// Send a new message
 export const sendMessage = async (messageData) => {
   try {
     const response = await axios.post(
@@ -32,7 +30,6 @@ export const sendMessage = async (messageData) => {
   }
 };
 
-// Get conversation with specific user
 export const getConversation = async (userId) => {
   try {
     const response = await axios.get(
@@ -49,7 +46,6 @@ export const getConversation = async (userId) => {
   }
 };
 
-// Get messages related to a specific booking
 export const getBookingMessages = async (bookingId) => {
   try {
     const response = await axios.get(
@@ -66,10 +62,9 @@ export const getBookingMessages = async (bookingId) => {
   }
 };
 
-// Get all conversations
 export const getAllConversations = async () => {
   try {
-    // Debug token
+    
     const token = localStorage.getItem('token');
     console.log('Using token:', token ? token.substring(0, 15) + '...' : 'no token');
     
@@ -87,7 +82,6 @@ export const getAllConversations = async () => {
   }
 };
 
-// Get unread message count
 export const getUnreadCount = async () => {
   try {
     const response = await axios.get(

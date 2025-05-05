@@ -9,7 +9,7 @@ const Dashboard = () => {
     return <Navigate to="/login" />;
   }
 
-  // Redirect based on user role
+  
   if (user.role === 'admin') {
     return <Navigate to="/admin/dashboard" />;
   } else if (user.role === 'host') {
@@ -18,7 +18,7 @@ const Dashboard = () => {
     return <Navigate to="/dashboard/renter" />;
   }
 
-  // Default fallback
+  
   return <Navigate to="/" />;
 };
 

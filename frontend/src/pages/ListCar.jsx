@@ -41,7 +41,7 @@ const ListCar = () => {
   const [fieldErrors, setFieldErrors] = useState({});
   const [success, setSuccess] = useState(false);
   
-  // Refs for scrolling to errors
+  
   const imageSection = useRef(null);
 
   const handleChange = (e) => {
@@ -59,10 +59,10 @@ const ListCar = () => {
       const selectedImage = e.target.files[0];
       setImage(selectedImage);
 
-      // Clear any previous image errors
+      
       setFieldErrors(prev => ({...prev, image: null}));
 
-      // Create image preview
+      
       const reader = new FileReader();
       reader.onload = () => {
         setImagePreview(reader.result);
@@ -71,20 +71,20 @@ const ListCar = () => {
     }
   };
   
-  // Effect to scroll to errors
+  
   useEffect(() => {
     if (fieldErrors.image && imageSection.current) {
       imageSection.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   }, [fieldErrors]);
 
-  // Memoize the location select handler to prevent unnecessary re-renders
+  
   const handleLocationSelect = useCallback((locationData) => {
     setFormData(prev => ({
       ...prev,
       latitude: locationData.lat,
       longitude: locationData.lng,
-      // Update address field if provided
+      
       location: locationData.address || prev.location
     }));
   }, []);
@@ -95,7 +95,7 @@ const ListCar = () => {
     setError('');
     setFieldErrors({});
     
-    // Validation
+    
     let hasErrors = false;
     const newFieldErrors = {};
     
@@ -104,7 +104,7 @@ const ListCar = () => {
       hasErrors = true;
     }
     
-    // Image validation
+    
     if (!image) {
       newFieldErrors.image = 'Please upload a photo of your car';
       hasErrors = true;
@@ -117,35 +117,35 @@ const ListCar = () => {
     }
 
     try {
-      // Get selected features as an array
+      
       const featuresArray = Object.entries(carFeatures)
         .filter(([_, isEnabled]) => isEnabled)
         .map(([feature, _]) => feature);
 
-      // Create FormData object for file upload
+      
       const carData = new FormData();
 
-      // Add form fields to FormData
+      
       Object.keys(formData).forEach(key => {
         carData.append(key, formData[key]);
       });
 
-      // Add features as JSON string
+      
       carData.append('features', JSON.stringify(featuresArray));
 
-      // Add image if provided
+      
       if (image) {
         carData.append('image', image);
       }
 
-      // Make API request to create car listing
+      
       const response = await createCar(carData);
 
       if (response.success) {
         console.log('Car listing created:', response.data);
         setSuccess(true);
 
-        // Reset form
+        
         setFormData({
           brand: '',
           model: '',
@@ -175,7 +175,7 @@ const ListCar = () => {
         setImage(null);
         setImagePreview(null);
 
-        // Redirect after success
+        
         setTimeout(() => navigate('/dashboard'), 2000);
       } else {
         setError(response.error || 'Failed to create car listing');
@@ -206,7 +206,7 @@ const ListCar = () => {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Car Details Section */}
+          {}
           <div>
             <h2 className="text-xl font-semibold mb-4">Car Details</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -310,7 +310,7 @@ const ListCar = () => {
             </div>
           </div>
 
-          {/* Price & Location Section */}
+          {}
           <div>
             <h2 className="text-xl font-semibold mb-4">Price & Location</h2>
             <div className="grid grid-cols-1 gap-6">
@@ -350,21 +350,21 @@ const ListCar = () => {
                 </p>
               </div>
 
-              {/* Map Location Picker */}
+              {}
               <div>
                 <label className="block text-gray-700 font-semibold mb-2">Select Location on Map</label>
                 <LocationPicker onLocationSelect={handleLocationSelect} />
 
-                {/* Hidden fields for lat/lng */}
+                {}
                 <input type="hidden" name="latitude" value={formData.latitude} />
                 <input type="hidden" name="longitude" value={formData.longitude} />
               </div>
             </div>
           </div>
 
-          {/* Rest of the form remains the same... */}
+          {}
           
-          {/* Availability Section */}
+          {}
           <div>
             <h2 className="text-xl font-semibold mb-4">Availability</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -395,7 +395,7 @@ const ListCar = () => {
             </div>
           </div>
 
-          {/* Features Section */}
+          {}
           <div>
             <h2 className="text-xl font-semibold mb-4">Features & Amenities</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -414,7 +414,7 @@ const ListCar = () => {
             </div>
           </div>
 
-          {/* Description */}
+          {}
           <div>
             <h2 className="text-xl font-semibold mb-4">Description</h2>
             <textarea
@@ -427,7 +427,7 @@ const ListCar = () => {
             ></textarea>
           </div>
 
-          {/* Car Images */}
+          {}
           <div id="image-section" ref={imageSection}>
             <h2 className="text-xl font-semibold mb-4">
               Car Photos <span className="text-red-500">*</span>
@@ -437,48 +437,15 @@ const ListCar = () => {
                 type="file"
                 id="car-image"
                 onChange={handleImageChange}
-                accept="image/*"
-                className="hidden"
-                required
-              />
-              <label
-                htmlFor="car-image"
-                className="cursor-pointer block w-full"
-              >
-                {!imagePreview ? (
-                  <>
-                    <div className={`mx-auto w-12 h-12 ${!image && (fieldErrors.image || error) ? 'text-red-400' : 'text-gray-400'}`}>
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">       
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                    </div>
-                    <p className={`mt-2 text-sm ${!image && (fieldErrors.image || error) ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>
-                      Click to upload a photo of your car (Required, Max size: 5MB)
-                    </p>
-                    <p className="mt-1 text-xs text-gray-400">
-                      JPG, PNG or GIF
-                    </p>
-                    {!image && (fieldErrors.image || error) && (
-                      <p className="mt-2 text-sm text-red-600 font-medium">
-                        {fieldErrors.image || "Please upload an image of your car to continue"}
-                      </p>
-                    )}
-                  </>
-                ) : (
-                  <div className="relative">
-                    <img
-                      src={imagePreview}
-                      alt="Car preview"
-                      className="max-h-64 mx-auto rounded"
-                    />
-                    <p className="mt-2 text-sm text-gray-500">Click to change the image</p>
-                  </div>
-                )}
-              </label>
+                accept="image/*" />
+              {imagePreview && (
+                <div className="mt-4">
+                  <p className="text-sm text-gray-500 mb-2">Image Preview:</p>
+                  <img src={imagePreview} alt="Car preview" className="max-h-48 mx-auto rounded-md" />
+                </div>
+              )}
             </div>
           </div>
-
-          {/* Submit Button */}
           <button
             type="submit"
             disabled={loading}

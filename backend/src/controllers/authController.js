@@ -3,7 +3,6 @@ const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const db = require('../config/database');
 
-// Register a new user
 exports.register = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -16,7 +15,7 @@ exports.register = async (req, res) => {
 
   const { name, email, password, role, phone, id_number, gender, date_of_birth } = req.body;
   
-  // Check if license image was uploaded
+  
   if (!req.file) {
     return res.status(400).json({ message: "Driver's License image is required" });
   }
@@ -24,13 +23,13 @@ exports.register = async (req, res) => {
   const licenseImage = req.file.path;
 
   try {
-    // Check if user already exists
+    
     const userExists = await db.query('SELECT * FROM users WHERE email = $1', [email]);
     if (userExists.rows.length > 0) {
       return res.status(400).json({ message: 'User already exists with this email' });
     }
     
-    // Verify age is 18 or older
+    
     const birthDate = new Date(date_of_birth);
     const today = new Date();
     let age = today.getFullYear() - birthDate.getFullYear();
@@ -44,11 +43,11 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: 'You must be 18 years or older to register' });
     }
 
-    // Hash password
+    
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Insert new user with additional fields
+    
     const newUser = await db.query(
       `INSERT INTO users
        (name, email, password, role, phone, id_number, license_image, gender, date_of_birth)
@@ -57,7 +56,7 @@ exports.register = async (req, res) => {
       [name, email, hashedPassword, role, phone, id_number, licenseImage, gender || null, date_of_birth || null]
     );
 
-    // Generate JWT token
+    
     const payload = {
       user: {
         id: newUser.rows[0].id,
@@ -68,7 +67,7 @@ exports.register = async (req, res) => {
     jwt.sign(
       payload,
       process.env.JWT_SECRET,
-      { expiresIn: '30d' }, // Extended to 30 days
+      { expiresIn: '30d' }, 
       (err, token) => {
         if (err) throw err;
         res.status(201).json({
@@ -88,7 +87,6 @@ exports.register = async (req, res) => {
   }
 };
 
-// Login user
 exports.login = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -98,7 +96,7 @@ exports.login = async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    // Check if user exists with status information
+    
     const result = await db.query(
       'SELECT id, name, email, password, role, status, freeze_until, freeze_reason, ban_reason FROM users WHERE email = $1', 
       [email]
@@ -110,13 +108,13 @@ exports.login = async (req, res) => {
 
     const user = result.rows[0];
 
-    // Compare password
+    
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
-    // Check if account is banned
+    
     if (user.status === 'banned') {
       return res.status(403).json({
         message: 'Your account has been banned',
@@ -125,19 +123,19 @@ exports.login = async (req, res) => {
       });
     }
 
-    // Check if account is frozen
+    
     if (user.status === 'frozen') {
       const freezeUntil = new Date(user.freeze_until);
       const now = new Date();
 
-      // If freeze period has expired, automatically unfreeze the user
+      
       if (freezeUntil < now) {
         await db.query(
           'UPDATE users SET status = $1, freeze_until = NULL, freeze_reason = NULL WHERE id = $2',
           ['active', user.id]
         );
       } else {
-        // Return error with freeze information
+        
         return res.status(403).json({
           message: 'Your account has been temporarily frozen',
           status: 'frozen',
@@ -147,7 +145,7 @@ exports.login = async (req, res) => {
       }
     }
 
-    // Generate JWT token
+    
     const payload = {
       user: {
         id: user.id,
@@ -158,7 +156,7 @@ exports.login = async (req, res) => {
     jwt.sign(
       payload,
       process.env.JWT_SECRET,
-      { expiresIn: '30d' }, // Extended to 30 days
+      { expiresIn: '30d' }, 
       (err, token) => {
         if (err) throw err;
         res.json({
@@ -178,7 +176,6 @@ exports.login = async (req, res) => {
   }
 };
 
-// Get current user profile
 exports.getCurrentUser = async (req, res) => {
   try {
     const user = await db.query(
@@ -197,17 +194,16 @@ exports.getCurrentUser = async (req, res) => {
   }
 };
 
-// Switch user role function
 exports.switchRole = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    // If newRole is not provided, toggle between host and renter
+    
     let newRole;
     if (req.body.newRole) {
       newRole = req.body.newRole;
     } else {
-      // Get the current role
+      
       const userResult = await db.query('SELECT role FROM users WHERE id = $1', [userId]);
       if (userResult.rows.length === 0) {
         return res.status(404).json({ message: 'User not found' });
@@ -219,12 +215,12 @@ exports.switchRole = async (req, res) => {
 
     console.log(`Switching role for user ${userId} to ${newRole}`);
 
-    // Validate the new role
+    
     if (newRole !== 'host' && newRole !== 'renter') {
       return res.status(400).json({ message: 'Invalid role. Must be either "host" or "renter".' });
     }
 
-    // Update the user's role in the database
+    
     const result = await db.query(
       'UPDATE users SET role = $1 WHERE id = $2 RETURNING id, name, email, role',
       [newRole, userId]
@@ -236,11 +232,11 @@ exports.switchRole = async (req, res) => {
 
     const updatedUser = result.rows[0];
 
-    // Generate a new token with the updated role
+    
     const token = jwt.sign(
       { user: { id: updatedUser.id, role: updatedUser.role } },
       process.env.JWT_SECRET,
-      { expiresIn: '30d' } // Extended to 30 days
+      { expiresIn: '30d' } 
     );
 
     res.json({

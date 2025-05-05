@@ -1,4 +1,4 @@
-// Get cars owned by the current user (host)
+
 exports.getHostCars = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -16,12 +16,12 @@ exports.getHostCars = async (req, res) => {
     
     console.log(`Found ${result.rows.length} cars for host ${userId}`);
     
-    // Format image URLs
+    
     const cars = result.rows.map(car => {
       if (car.image && !car.image_url) {
         const baseUrl = process.env.BASE_URL || 'http://localhost:5000';
         
-        // Normalize the path
+        
         let imagePath = car.image;
         if (!imagePath.startsWith('uploads/')) {
           imagePath = `uploads/cars/${imagePath}`;

@@ -1,4 +1,4 @@
-// Run this script to apply all updates
+
 const { execSync } = require('child_process');
 const path = require('path');
 

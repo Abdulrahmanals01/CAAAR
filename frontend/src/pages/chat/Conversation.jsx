@@ -19,7 +19,7 @@ const Conversation = () => {
   const messagesEndRef = useRef(null);
   const navigate = useNavigate();
 
-  // Initial load of conversation
+  
   useEffect(() => {
     const fetchConversation = async () => {
       if (!currentUser || !currentUser.id) return;
@@ -31,7 +31,7 @@ const Conversation = () => {
         if (response.success) {
           setMessages(response.data);
 
-          // Set other user info
+          
           if (response.data.length > 0) {
             const msg = response.data[0];
             const isOtherUserSender = msg.sender_id.toString() === userId;
@@ -41,14 +41,14 @@ const Conversation = () => {
               name: isOtherUserSender ? msg.sender_name : msg.receiver_name
             });
 
-            // Set the last message ID for incremental updates
+            
             if (response.data.length > 0) {
               const ids = response.data.map(m => m.id).filter(id => id);
               setLastMessageId(Math.max(...ids, 0));
             }
           }
 
-          // Mark as read
+          
           markMessagesAsRead(userId);
         } else {
           setError('Failed to load conversation');
@@ -66,14 +66,14 @@ const Conversation = () => {
     }
   }, [userId, currentUser]);
 
-  // Fetch only new messages periodically
+  
   useEffect(() => {
     if (!userId || loading || !currentUser || !currentUser.id) return;
 
     const fetchNewMessages = async () => {
       try {
-        // In a real implementation, you would have an API endpoint that accepts a 'since' parameter
-        // For now, we'll use the existing endpoint and filter client-side
+        
+        
         const response = await getConversation(userId);
 
         if (response.success) {
@@ -83,19 +83,19 @@ const Conversation = () => {
           if (newMsgs.length > 0) {
             setMessages(prev => [...prev, ...newMsgs]);
 
-            // Update last message ID
+            
             const ids = newMsgs.map(m => m.id).filter(id => id);
             if (ids.length > 0) {
               setLastMessageId(Math.max(...ids, lastMessageId));
             }
 
-            // Mark new messages as read
+            
             markMessagesAsRead(userId);
           }
         }
       } catch (err) {
         console.error('Error fetching new messages:', err);
-        // Don't show error to user for background refreshes
+        
       }
     };
 
@@ -103,15 +103,15 @@ const Conversation = () => {
     return () => clearInterval(intervalId);
   }, [userId, messages, lastMessageId, loading, currentUser]);
 
-  // Listen for new messages from socket
+  
   useEffect(() => {
     if (socket && currentUser && currentUser.id) {
       const handleNewMessage = (message) => {
-        // Add message if it's from this conversation
+        
         if ((message.sender_id.toString() === userId && message.receiver_id === currentUser.id) ||
             (message.sender_id === currentUser.id && message.receiver_id.toString() === userId)) {
 
-          // Check if message is already in our state to avoid duplicates
+          
           setMessages(prev => {
             if (!prev.some(m => m.id === message.id)) {
               return [...prev, message];
@@ -119,7 +119,7 @@ const Conversation = () => {
             return prev;
           });
 
-          // Mark as read if we are the receiver
+          
           if (message.receiver_id === currentUser.id) {
             markMessagesAsRead(userId);
           }
@@ -136,17 +136,17 @@ const Conversation = () => {
     }
   }, [socket, userId, currentUser, markMessagesAsRead]);
 
-  // Scroll to bottom on new messages
+  
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Send message
+  
   const handleSendMessage = async (messageText) => {
     if (!messageText.trim() || !currentUser || !currentUser.id) return;
 
     try {
-      // Optimistically add the message to the UI
+      
       const tempId = `temp-${Date.now()}`;
       const newMessage = {
         id: tempId,
@@ -160,25 +160,25 @@ const Conversation = () => {
 
       setMessages(prev => [...prev, newMessage]);
 
-      // Send via API
+      
       const response = await apiSendMessage({
         receiver_id: parseInt(userId),
         message: messageText
       });
 
       if (!response.success) {
-        // Remove the temporary message and show error
+        
         setMessages(prev => prev.filter(m => m.id !== tempId));
         setError('Failed to send message');
       } else {
-        // Replace temp message with real one if needed
+        
         const realMessage = response.data;
         if (realMessage && realMessage.id) {
           setMessages(prev =>
             prev.map(m => m.id === tempId ? {...realMessage, sender_name: currentUser.name || 'You'} : m)
           );
 
-          // Update last message ID
+          
           if (realMessage.id > lastMessageId) {
             setLastMessageId(realMessage.id);
           }
@@ -204,7 +204,7 @@ const Conversation = () => {
 
   return (
     <div className="flex flex-col h-screen bg-gray-100">
-      {/* Header */}
+      {}
       <div className="bg-white border-b p-3 flex items-center">
         <button
           onClick={handleBack}
@@ -218,7 +218,7 @@ const Conversation = () => {
         </div>
       </div>
 
-      {/* Messages */}
+      {}
       <div className="flex-1 overflow-y-auto p-4">
         {error && <div className="text-red-500 mb-4">{error}</div>}
 
@@ -238,7 +238,7 @@ const Conversation = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
+      {}
       <ChatInput onSend={handleSendMessage} />
     </div>
   );

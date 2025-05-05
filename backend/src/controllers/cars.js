@@ -2,7 +2,6 @@ import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-// Get API headers with auth token
 const getHeaders = (contentType = 'application/json') => {
   const token = localStorage.getItem('token');
   return {
@@ -13,10 +12,9 @@ const getHeaders = (contentType = 'application/json') => {
   };
 };
 
-// Get all cars with optional filters
 export const getCars = async (filters = {}) => {
   try {
-    // Convert filters object to query string
+    
     const queryParams = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
       if (value) {
@@ -33,7 +31,6 @@ export const getCars = async (filters = {}) => {
   }
 };
 
-// Get car by ID
 export const getCarById = async (carId) => {
   try {
     const response = await axios.get(`${API_URL}/api/cars/${carId}`);
@@ -46,7 +43,6 @@ export const getCarById = async (carId) => {
   }
 };
 
-// Create new car listing
 export const createCar = async (carData) => {
   try {
     const token = localStorage.getItem('token');
@@ -75,7 +71,6 @@ export const createCar = async (carData) => {
   }
 };
 
-// Update car listing
 export const updateCar = async (carId, carData) => {
   try {
     const token = localStorage.getItem('token');
@@ -103,7 +98,6 @@ export const updateCar = async (carId, carData) => {
   }
 };
 
-// Update car availability only
 export const updateCarAvailability = async (carId, availabilityData) => {
   try {
     const token = localStorage.getItem('token');
@@ -136,7 +130,6 @@ export const updateCarAvailability = async (carId, availabilityData) => {
   }
 };
 
-// Check if car has active bookings
 export const checkActiveBookings = async (carId) => {
   try {
     const token = localStorage.getItem('token');
@@ -163,7 +156,6 @@ export const checkActiveBookings = async (carId) => {
   }
 };
 
-// Delete car listing
 export const deleteCar = async (carId) => {
   try {
     const token = localStorage.getItem('token');
@@ -190,7 +182,6 @@ export const deleteCar = async (carId) => {
   }
 };
 
-// Get host's cars
 export const getHostCars = async () => {
   try {
     const token = localStorage.getItem('token');

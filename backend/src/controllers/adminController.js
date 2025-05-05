@@ -1,6 +1,5 @@
 const db = require('../config/database');
 
-// Get all users with their details
 exports.getAllUsers = async (req, res) => {
   try {
     const users = await db.query(`
@@ -23,7 +22,6 @@ exports.getAllUsers = async (req, res) => {
   }
 };
 
-// Get all active listings
 exports.getAllListings = async (req, res) => {
   try {
     const listings = await db.query(`
@@ -46,7 +44,6 @@ exports.getAllListings = async (req, res) => {
   }
 };
 
-// Get deleted listings
 exports.getDeletedListings = async (req, res) => {
   try {
     const deletedListings = await db.query(`
@@ -70,7 +67,6 @@ exports.getDeletedListings = async (req, res) => {
   }
 };
 
-// Get admin actions history
 exports.getAdminActions = async (req, res) => {
   try {
     console.log('Fetching admin actions...');
@@ -94,32 +90,31 @@ exports.getAdminActions = async (req, res) => {
   }
 };
 
-// Record admin action - FIXED
 async function recordAdminAction(adminId, adminName, actionType, targetType, targetId, targetName, reason, expiresAt = null) {
   try {
     console.log('Recording admin action:', {
       adminId, adminName, actionType, targetType, targetId, targetName, reason
     });
     
-    // Validate action type
+    
     if (!['freeze', 'unfreeze', 'ban', 'unban', 'delete_listing'].includes(actionType)) {
       console.error('Invalid action_type:', actionType);
       return null;
     }
     
-    // Validate target type
+    
     if (!['user', 'listing'].includes(targetType)) {
       console.error('Invalid target_type:', targetType);
       return null;
     }
     
-    // Make sure we have the required fields
+    
     if (!adminId || !targetId) {
       console.error('Missing required fields:', { adminId, targetId });
       return null;
     }
     
-    // Ensure adminName and targetName have values
+    
     const safeAdminName = adminName || 'Admin User';
     const safeTargetName = targetName || 'Target';
     
@@ -138,7 +133,6 @@ async function recordAdminAction(adminId, adminName, actionType, targetType, tar
   }
 }
 
-// Freeze user account
 exports.freezeUser = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -148,7 +142,7 @@ exports.freezeUser = async (req, res) => {
     
     console.log('Freezing user:', { userId, adminId, adminName, duration, reason });
 
-    // Get user info before freezing
+    
     const userInfo = await db.query('SELECT name FROM users WHERE id = $1', [userId]);
     if (userInfo.rows.length === 0) {
       return res.status(404).json({
@@ -158,11 +152,11 @@ exports.freezeUser = async (req, res) => {
     }
     const userName = userInfo.rows[0].name;
 
-    // Calculate freeze until date
+    
     const freezeUntil = new Date();
     freezeUntil.setDate(freezeUntil.getDate() + parseInt(duration));
 
-    // Update user status
+    
     const updateQuery = `
       UPDATE users
       SET status = 'frozen',
@@ -181,7 +175,7 @@ exports.freezeUser = async (req, res) => {
       });
     }
 
-    // Record admin action
+    
     await recordAdminAction(
       adminId,
       adminName,
@@ -193,7 +187,7 @@ exports.freezeUser = async (req, res) => {
       freezeUntil
     );
 
-    // Cancel all active bookings
+    
     await db.query(`
       UPDATE bookings
       SET status = 'canceled',
@@ -202,7 +196,7 @@ exports.freezeUser = async (req, res) => {
         AND status NOT IN ('completed', 'canceled')
     `, [reason, userId]);
 
-    // Delete all active listings
+    
     await db.query(`
       DELETE FROM cars
       WHERE user_id = $1
@@ -221,14 +215,13 @@ exports.freezeUser = async (req, res) => {
   }
 };
 
-// Unfreeze user account
 exports.unfreezeUser = async (req, res) => {
   try {
     const { userId } = req.params;
     const adminId = req.user.id;
     const adminName = req.user.name || 'Admin User';
 
-    // Get user info before unfreezing
+    
     const userInfo = await db.query('SELECT name FROM users WHERE id = $1', [userId]);
     if (userInfo.rows.length === 0) {
       return res.status(404).json({
@@ -254,7 +247,7 @@ exports.unfreezeUser = async (req, res) => {
       });
     }
 
-    // Record admin action
+    
     await recordAdminAction(
       adminId,
       adminName,
@@ -278,7 +271,6 @@ exports.unfreezeUser = async (req, res) => {
   }
 };
 
-// Ban user account
 exports.banUser = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -288,7 +280,7 @@ exports.banUser = async (req, res) => {
 
     console.log('Ban user request:', { userId, adminId, adminName, reason });
 
-    // Get user info before banning
+    
     const userInfo = await db.query('SELECT name FROM users WHERE id = $1', [userId]);
     if (userInfo.rows.length === 0) {
       return res.status(404).json({
@@ -298,7 +290,7 @@ exports.banUser = async (req, res) => {
     }
     const userName = userInfo.rows[0].name;
 
-    // Update user status
+    
     const updateQuery = `
       UPDATE users
       SET status = 'banned',
@@ -316,7 +308,7 @@ exports.banUser = async (req, res) => {
       });
     }
 
-    // Record admin action
+    
     await recordAdminAction(
       adminId,
       adminName,
@@ -327,7 +319,7 @@ exports.banUser = async (req, res) => {
       reason
     );
 
-    // Cancel all active bookings
+    
     await db.query(`
       UPDATE bookings
       SET status = 'canceled',
@@ -336,7 +328,7 @@ exports.banUser = async (req, res) => {
         AND status NOT IN ('completed', 'canceled')
     `, [reason, userId]);
 
-    // Delete all listings
+    
     await db.query(`
       DELETE FROM cars
       WHERE user_id = $1
@@ -355,14 +347,13 @@ exports.banUser = async (req, res) => {
   }
 };
 
-// Unban user account
 exports.unbanUser = async (req, res) => {
   try {
     const { userId } = req.params;
     const adminId = req.user.id;
     const adminName = req.user.name || 'Admin User';
 
-    // Get user info before unbanning
+    
     const userInfo = await db.query('SELECT name FROM users WHERE id = $1', [userId]);
     if (userInfo.rows.length === 0) {
       return res.status(404).json({
@@ -387,7 +378,7 @@ exports.unbanUser = async (req, res) => {
       });
     }
 
-    // Record admin action
+    
     await recordAdminAction(
       adminId,
       adminName,
@@ -411,7 +402,6 @@ exports.unbanUser = async (req, res) => {
   }
 };
 
-// Delete listing
 exports.deleteListing = async (req, res) => {
   try {
     const { listingId } = req.params;
@@ -419,7 +409,7 @@ exports.deleteListing = async (req, res) => {
     const adminId = req.user.id;
     const adminName = req.user.name || 'Admin User';
 
-    // Get listing details before deletion
+    
     const listingDetails = await db.query(`
       SELECT c.*, u.name as owner_name, u.email as owner_email
       FROM cars c
@@ -437,7 +427,7 @@ exports.deleteListing = async (req, res) => {
     const listing = listingDetails.rows[0];
     const listingName = `${listing.brand} ${listing.model} (${listing.year})`;
 
-    // Save to deleted_listings table
+    
     await db.query(`
       INSERT INTO deleted_listings 
       (original_id, brand, model, year, plate, price_per_day, owner_id, owner_name, owner_email, deleted_by, reason)
@@ -456,7 +446,7 @@ exports.deleteListing = async (req, res) => {
       reason
     ]);
 
-    // Record admin action
+    
     await recordAdminAction(
       adminId,
       adminName,
@@ -467,7 +457,7 @@ exports.deleteListing = async (req, res) => {
       reason
     );
 
-    // Cancel all active bookings for this car
+    
     await db.query(`
       UPDATE bookings
       SET status = 'canceled',
@@ -476,7 +466,7 @@ exports.deleteListing = async (req, res) => {
         AND status NOT IN ('completed', 'canceled')
     `, [reason, listingId]);
 
-    // Delete the listing
+    
     const result = await db.query(`
       DELETE FROM cars
       WHERE id = $1

@@ -4,7 +4,6 @@ const { exec } = require('child_process');
 
 console.log('Starting image handling fix implementation...');
 
-// 1. Create utility directories if they don't exist
 const mkdirCmd = `
 mkdir -p /mnt/c/Users/ddodo/OneDrive/Desktop/CAAAR/backend/src/utils
 mkdir -p /mnt/c/Users/ddodo/OneDrive/Desktop/CAAAR/frontend/src/utils
@@ -21,7 +20,7 @@ exec(mkdirCmd, (error, stdout, stderr) => {
   }
   console.log('Directories created successfully');
   
-  // 2. Apply the new app.js with image fix
+  
   const applyAppCmd = `cp /mnt/c/Users/ddodo/OneDrive/Desktop/CAAAR/backend/src/app.js.image-fix /mnt/c/Users/ddodo/OneDrive/Desktop/CAAAR/backend/src/app.js`;
   
   exec(applyAppCmd, (error, stdout, stderr) => {
@@ -31,7 +30,7 @@ exec(mkdirCmd, (error, stdout, stderr) => {
     }
     console.log('New app.js applied successfully');
     
-    // 3. Run the image path fixer script
+    
     console.log('Running image path fixer script...');
     const fixImgCmd = `cd /mnt/c/Users/ddodo/OneDrive/Desktop/CAAAR/backend && node src/fix-image-paths.js`;
     

@@ -10,7 +10,7 @@ const DashboardRoute = ({ children, allowedRoles }) => {
   }
 
   if (!allowedRoles.includes(user.role)) {
-    // Redirect to appropriate dashboard based on role
+    
     if (user.role === 'admin') {
       return <Navigate to="/admin/dashboard" />;
     } else if (user.role === 'host') {

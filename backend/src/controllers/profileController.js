@@ -1,11 +1,10 @@
 const db = require('../config/database');
 
-// Get user profile by ID
 exports.getUserProfile = async (req, res) => {
   try {
     const { userId } = req.params;
 
-    // Get user details
+    
     const userResult = await db.query(
       `SELECT id, name, email, role, created_at
        FROM users WHERE id = $1`,
@@ -18,14 +17,14 @@ exports.getUserProfile = async (req, res) => {
 
     const user = userResult.rows[0];
 
-    // Get user ratings info
+    
     const ratingsQuery = await db.query(
       `SELECT AVG(rating) as average_rating, COUNT(*) as total_ratings
        FROM ratings WHERE rating_for = $1`,
       [userId]
     );
 
-    // Get user's cars if they are a host
+    
     let cars = [];
     if (user.role === 'host') {
       const carsResult = await db.query(
@@ -39,7 +38,7 @@ exports.getUserProfile = async (req, res) => {
       cars = carsResult.rows;
     }
 
-    // Get booking stats
+    
     const bookingStatsQuery = await db.query(
       `SELECT 
         COUNT(*) as total_bookings,

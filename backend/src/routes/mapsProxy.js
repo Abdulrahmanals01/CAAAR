@@ -3,7 +3,6 @@ const router = express.Router();
 const axios = require('axios');
 const { authenticate } = require('../middleware/auth');
 
-// Proxy Google Maps API requests to protect API key
 router.get('/geocode', async (req, res) => {
   try {
     const { address } = req.query;
@@ -25,7 +24,6 @@ router.get('/geocode', async (req, res) => {
   }
 });
 
-// Proxy Places API requests
 router.get('/places', async (req, res) => {
   try {
     const { query, location, radius } = req.query;

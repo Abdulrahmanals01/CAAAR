@@ -1,22 +1,21 @@
 const db = require('../config/database');
 
-// Create a new rating
 exports.createRating = async (req, res) => {
   try {
     const { booking_id, rating_for, car_id, rating, comment, car_rating, car_comment } = req.body;
     const rating_by = req.user.id;
 
-    // Validate required fields
+    
     if (!booking_id || !rating_for || !car_id || !rating) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
-    // Validate rating is between 1 and 5
+    
     if (rating < 1 || rating > 5) {
       return res.status(400).json({ message: 'Rating must be between 1 and 5' });
     }
 
-    // Check if booking exists and is completed
+    
     const bookingCheck = await db.query(
       `SELECT b.*, c.user_id as host_id 
        FROM bookings b 
@@ -31,14 +30,14 @@ exports.createRating = async (req, res) => {
 
     const booking = bookingCheck.rows[0];
 
-    // Check if the booking is completed
+    
     if (booking.status !== 'completed') {
       return res.status(400).json({ 
         message: 'Cannot rate a booking that is not completed' 
       });
     }
 
-    // Check if user is part of the booking
+    
     const isRenter = booking.renter_id === rating_by;
     const isHost = booking.host_id === rating_by;
 
@@ -48,7 +47,7 @@ exports.createRating = async (req, res) => {
       });
     }
 
-    // Check if the user is rating the appropriate party
+    
     if (isRenter && rating_for === booking.renter_id) {
       return res.status(400).json({ message: 'You cannot rate yourself' });
     }
@@ -57,7 +56,7 @@ exports.createRating = async (req, res) => {
       return res.status(400).json({ message: 'You cannot rate yourself' });
     }
 
-    // Check if rating already exists
+    
     const existingRating = await db.query(
       'SELECT * FROM ratings WHERE booking_id = $1 AND rating_by = $2 AND rating_for = $3',
       [booking_id, rating_by, rating_for]
@@ -69,13 +68,13 @@ exports.createRating = async (req, res) => {
       });
     }
 
-    // Use a transaction for multiple operations
+    
     const client = await db.pool.connect();
     
     try {
       await client.query('BEGIN');
       
-      // Create user rating
+      
       await client.query(
         `INSERT INTO ratings 
           (booking_id, rating_by, rating_for, car_id, rating, comment, created_at)
@@ -83,14 +82,14 @@ exports.createRating = async (req, res) => {
         [booking_id, rating_by, rating_for, car_id, rating, comment || null]
       );
 
-      // If it's a renter rating a car, create a car rating
+      
       if (isRenter && car_rating) {
-        // Validate car rating
+        
         if (car_rating < 1 || car_rating > 5) {
           throw new Error('Car rating must be between 1 and 5');
         }
         
-        // Create car rating
+        
         await client.query(
           `INSERT INTO car_ratings 
             (booking_id, renter_id, car_id, rating, comment, created_at)
@@ -114,13 +113,12 @@ exports.createRating = async (req, res) => {
   }
 };
 
-// Check if user can rate a booking
 exports.checkRatingEligibility = async (req, res) => {
   try {
     const { booking_id } = req.params;
     const user_id = req.user.id;
 
-    // Check if booking exists
+    
     const bookingCheck = await db.query(
       `SELECT b.*, c.user_id as host_id 
        FROM bookings b 
@@ -135,7 +133,7 @@ exports.checkRatingEligibility = async (req, res) => {
 
     const booking = bookingCheck.rows[0];
 
-    // Check if user is part of the booking
+    
     const isRenter = booking.renter_id === user_id;
     const isHost = booking.host_id === user_id;
 
@@ -145,7 +143,7 @@ exports.checkRatingEligibility = async (req, res) => {
       });
     }
 
-    // Check if booking is completed
+    
     if (booking.status !== 'completed') {
       return res.status(400).json({ 
         eligible: false,
@@ -153,11 +151,11 @@ exports.checkRatingEligibility = async (req, res) => {
       });
     }
 
-    // Check if user has already rated
+    
     let hasRated = false;
     
     if (isRenter) {
-      // Check if renter has rated host
+      
       const renterRating = await db.query(
         'SELECT * FROM ratings WHERE booking_id = $1 AND rating_by = $2 AND rating_for = $3',
         [booking_id, user_id, booking.host_id]
@@ -165,7 +163,7 @@ exports.checkRatingEligibility = async (req, res) => {
       
       hasRated = renterRating.rows.length > 0;
     } else {
-      // Check if host has rated renter
+      
       const hostRating = await db.query(
         'SELECT * FROM ratings WHERE booking_id = $1 AND rating_by = $2 AND rating_for = $3',
         [booking_id, user_id, booking.renter_id]
@@ -187,12 +185,11 @@ exports.checkRatingEligibility = async (req, res) => {
   }
 };
 
-// Get ratings for a user
 exports.getUserRatings = async (req, res) => {
   try {
     const { user_id } = req.params;
 
-    // Get ratings for the user
+    
     const ratingsResult = await db.query(
       `SELECT r.*,
         u_by.name as rated_by_name,
@@ -209,7 +206,7 @@ exports.getUserRatings = async (req, res) => {
       [user_id]
     );
 
-    // Get car ratings if the user is a host
+    
     const carRatingsResult = await db.query(
       `SELECT cr.*, 
         u.name as renter_name,
@@ -223,7 +220,7 @@ exports.getUserRatings = async (req, res) => {
       [user_id]
     );
 
-    // Calculate average ratings
+    
     const ratings = ratingsResult.rows;
     let averageRating = 0;
     
@@ -254,12 +251,11 @@ exports.getUserRatings = async (req, res) => {
   }
 };
 
-// Get car ratings
 exports.getCarRatings = async (req, res) => {
   try {
     const { car_id } = req.params;
 
-    // Get car ratings
+    
     const carRatingsResult = await db.query(
       `SELECT cr.*, 
         u.name as renter_name,
@@ -272,7 +268,7 @@ exports.getCarRatings = async (req, res) => {
       [car_id]
     );
 
-    // Calculate average rating
+    
     const ratings = carRatingsResult.rows;
     let averageRating = 0;
     
@@ -281,7 +277,7 @@ exports.getCarRatings = async (req, res) => {
       averageRating = sum / ratings.length;
     }
 
-    // Get rating categories (mocked for now)
+    
     const categories = {
       cleanliness: 4.8,
       maintenance: 4.7,

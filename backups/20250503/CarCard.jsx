@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import StarRating from '../common/StarRating';
 
 const CarCard = ({ car }) => {
-  // Function to handle image URLs
+  
   const getCarImageUrl = (image) => {
     if (!image) {
       return '/assets/images/car-placeholder.jpg';
@@ -25,7 +25,7 @@ const CarCard = ({ car }) => {
 
   return (
     <div className="flex flex-col md:flex-row w-full h-full shadow-md rounded-lg overflow-hidden bg-white">
-      {/* Image */}
+      {}
       <div className="md:w-1/3 h-48 md:h-auto relative">
         <img
           src={car.image_url || getCarImageUrl(car.image)}
@@ -49,7 +49,7 @@ const CarCard = ({ car }) => {
         </div>
       </div>
       
-      {/* Details */}
+      {}
       <div className="md:w-2/3 p-4 flex flex-col justify-between">
         <div>
           <h2 className="text-xl font-bold text-gray-800">

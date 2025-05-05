@@ -17,7 +17,7 @@ const FileInput = ({
   const handleChange = (e) => {
     const file = e.target.files[0];
     
-    // Create preview if it's an image
+    
     if (file && file.type.startsWith('image/')) {
       const reader = new FileReader();
       reader.onload = () => {

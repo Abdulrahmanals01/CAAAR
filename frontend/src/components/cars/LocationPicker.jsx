@@ -1,24 +1,23 @@
 import React, { useState, useRef, useLayoutEffect } from 'react';
 import mapsLoader from '../../utils/mapsLoader';
 
-// Create a wrapper component that will handle the Google Maps lifecycle
 const LocationPicker = ({ onLocationSelect }) => {
   const mapContainerRef = useRef(null);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Use google maps refs to keep track of instances for cleanup
+  
   const googleRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markerRef = useRef(null);
   const listenersRef = useRef([]);
   
-  // Use useLayoutEffect to ensure DOM manipulation happens before React renders
+  
   useLayoutEffect(() => {
-    // Initialize variable to track if component is mounted
+    
     let isMounted = true;
     
-    // Add global error handler for Google Maps authentication failures
+    
     window.gm_authFailure = () => {
       if (isMounted) {
         setError('Google Maps API key is invalid or has expired. Please contact support.');
@@ -32,26 +31,26 @@ const LocationPicker = ({ onLocationSelect }) => {
       try {
         setIsLoading(true);
         
-        // Load Google Maps API
+        
         const google = await mapsLoader.load();
         googleRef.current = google;
 
-        // Create map instance
+        
         const mapOptions = {
-          center: { lat: 24.7136, lng: 46.6753 }, // Riyadh, Saudi Arabia
+          center: { lat: 24.7136, lng: 46.6753 }, 
           zoom: 12,
           mapTypeControl: true,
           streetViewControl: false
         };
 
-        // Only proceed if component is still mounted
+        
         if (!isMounted || !mapContainerRef.current) return;
 
-        // Create new map instance
+        
         const mapInstance = new google.maps.Map(mapContainerRef.current, mapOptions);
         mapInstanceRef.current = mapInstance;
 
-        // Create marker
+        
         const marker = new google.maps.Marker({
           map: mapInstance,
           draggable: true,
@@ -59,20 +58,20 @@ const LocationPicker = ({ onLocationSelect }) => {
         });
         markerRef.current = marker;
 
-        // Add click listener to map
+        
         const clickListener = mapInstance.addListener('click', (event) => {
           if (!isMounted) return;
 
-          // Set marker position
+          
           marker.setPosition(event.latLng);
 
-          // Get location data
+          
           const location = {
             lat: event.latLng.lat(),
             lng: event.latLng.lng()
           };
 
-          // Use geocoder to get address
+          
           const geocoder = new google.maps.Geocoder();
           geocoder.geocode({ location: event.latLng }, (results, status) => {
             if (!isMounted) return;
@@ -85,7 +84,7 @@ const LocationPicker = ({ onLocationSelect }) => {
           });
         });
 
-        // Add dragend listener to marker
+        
         const dragListener = marker.addListener('dragend', () => {
           if (!isMounted) return;
 
@@ -95,7 +94,7 @@ const LocationPicker = ({ onLocationSelect }) => {
             lng: position.lng()
           };
 
-          // Use geocoder to get address
+          
           const geocoder = new google.maps.Geocoder();
           geocoder.geocode({ location: position }, (results, status) => {
             if (!isMounted) return;
@@ -108,7 +107,7 @@ const LocationPicker = ({ onLocationSelect }) => {
           });
         });
 
-        // Store listeners for cleanup
+        
         listenersRef.current = [
           { target: mapInstance, listener: clickListener },
           { target: marker, listener: dragListener }
@@ -130,11 +129,11 @@ const LocationPicker = ({ onLocationSelect }) => {
 
     initializeMap();
 
-    // Cleanup function - critical for preventing the DOM node error
+    
     return () => {
       isMounted = false;
 
-      // Clean up event listeners
+      
       if (listenersRef.current.length > 0) {
         listenersRef.current.forEach(({ target, listener }) => {
           if (target && googleRef.current && googleRef.current.maps) {
@@ -144,13 +143,13 @@ const LocationPicker = ({ onLocationSelect }) => {
         listenersRef.current = [];
       }
 
-      // Clean up marker
+      
       if (markerRef.current) {
         markerRef.current.setMap(null);
         markerRef.current = null;
       }
 
-      // Clean up map (reference only, don't try to remove the element)
+      
       mapInstanceRef.current = null;
     };
   }, [onLocationSelect]);

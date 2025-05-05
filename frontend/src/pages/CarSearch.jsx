@@ -10,7 +10,7 @@ const CarSearch = () => {
   const [cars, setCars] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [viewMode, setViewMode] = useState('split'); // 'grid', 'map', or 'split'
+  const [viewMode, setViewMode] = useState('split'); 
   const [selectedCar, setSelectedCar] = useState(null);
   const searchTimeoutRef = useRef(null);
   const [filters, setFilters] = useState({
@@ -23,7 +23,7 @@ const CarSearch = () => {
     features: []
   });
 
-  // Extract search parameters from URL
+  
   const [searchParams, setSearchParams] = useState({
     location: '',
     startDate: new Date().toISOString().split('T')[0],
@@ -32,7 +32,7 @@ const CarSearch = () => {
     endTime: '10:00'
   });
 
-  // This effect runs when the component mounts or when location.search changes
+  
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
     const locationParam = queryParams.get('location');
@@ -41,53 +41,52 @@ const CarSearch = () => {
     const startTimeParam = queryParams.get('startTime');
     const endTimeParam = queryParams.get('endTime');
 
-    // Only update if we have at least one parameter
-    if (locationParam || startDateParam || endDateParam || startTimeParam || endTimeParam) {
-      const newSearchParams = {
-        location: locationParam || '',
-        startDate: startDateParam || new Date().toISOString().split('T')[0],
-        endDate: endDateParam || new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        startTime: startTimeParam || '10:00',
-        endTime: endTimeParam || '10:00'
-      };
-      console.log('Updated search params from URL:', newSearchParams);
-      setSearchParams(newSearchParams);
-    }
+    
+    // Always set search params from URL parameters if present, or use defaults
+    const newSearchParams = {
+      location: locationParam || '',
+      startDate: startDateParam || new Date().toISOString().split('T')[0],
+      endDate: endDateParam || new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      startTime: startTimeParam || '10:00',
+      endTime: endTimeParam || '10:00'
+    };
+    console.log('Updated search params from URL:', newSearchParams);
+    setSearchParams(newSearchParams);
   }, [location.search]);
 
-  // Check window size on component mount and resize
+  
   useEffect(() => {
     const handleResize = () => {
-      // Only show split view by default on larger screens
+      
       setViewMode(window.innerWidth >= 768 ? 'split' : 'grid');
     };
 
-    // Set initial value
+    
     handleResize();
 
-    // Add event listener
+    
     window.addEventListener('resize', handleResize);
 
-    // Clean up
+    
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Fetch cars when component mounts or search params/filters change - WITH DEBOUNCE
+  
   useEffect(() => {
-    // Set loading state
+    // Don't reset the cars array right away - wait for new data
     setLoading(true);
     
-    // Clear any existing timeout
+    // Clear any pending search timeout
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
     
-    // Create a new timeout to debounce the API call
+    // Set a timeout for the search to prevent too many API calls
     searchTimeoutRef.current = setTimeout(async () => {
       try {
         console.log('Fetching cars with params:', { ...searchParams, ...filters });
         
-        // Create a combined filter object with search params and filters
+        // Prepare search filters
         const searchFilters = {
           location: searchParams.location,
           start_date: searchParams.startDate,
@@ -104,9 +103,9 @@ const CarSearch = () => {
         const response = await getCars(searchFilters);
 
         if (response.success) {
-          // Process car data to ensure latitude and longitude are properly formatted
+          
           const processedCars = response.data.map(car => {
-            // Ensure latitude and longitude are present and valid numbers
+            
             if (car.latitude && car.longitude) {
               return {
                 ...car,
@@ -135,9 +134,9 @@ const CarSearch = () => {
       } finally {
         setLoading(false);
       }
-    }, 500); // 500ms debounce
+    }, 500); 
     
-    // Cleanup function to clear the timeout when the component unmounts
+    
     return () => {
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current);
@@ -145,15 +144,15 @@ const CarSearch = () => {
     };
   }, [searchParams, filters]);
 
-  // Handle filter changes from CarFilter component
+  
   const handleFilterChange = (newFilters) => {
     setFilters(newFilters);
   };
 
-  // Handle clicking on a car in the map
+  
   const handleMapCarSelect = (car) => {
     setSelectedCar(car);
-    // Scroll to that car in the list if in split view
+    
     if (viewMode === 'split') {
       const carElement = document.getElementById(`car-${car.id}`);
       if (carElement) {
@@ -162,7 +161,7 @@ const CarSearch = () => {
     }
   };
 
-  // Format date for display
+  
   const formatDate = (dateString) => {
     if (!dateString) return '';
     const options = { year: 'numeric', month: '2-digit', day: '2-digit' };
@@ -171,16 +170,16 @@ const CarSearch = () => {
 
   return (
     <div className="flex flex-col h-screen">
-      {/* Main container */}
+      {}
       <div className="flex flex-col md:flex-row h-full">
-        {/* Left sidebar with filters */}
+        {}
         <div className="md:w-64 bg-white border-r p-4 overflow-y-auto">
           <CarFilter onFilterChange={handleFilterChange} />
         </div>
 
-        {/* Main content area */}
+        {}
         <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-          {/* Car list - left side in split mode */}
+          {}
           {(viewMode === 'grid' || viewMode === 'split') && (
             <div className={`${viewMode === 'split' ? 'md:w-1/2 border-r' : 'w-full'} overflow-y-auto`}>
               <div className="p-4 border-b">
@@ -233,7 +232,7 @@ const CarSearch = () => {
             </div>
           )}
 
-          {/* Map - right side in split mode */}
+          {}
           {(viewMode === 'map' || viewMode === 'split') && (
             <div className={`${viewMode === 'split' ? 'md:w-1/2' : 'w-full'} h-full relative`}>
               {loading ? (
@@ -257,7 +256,7 @@ const CarSearch = () => {
         </div>
       </div>
 
-      {/* View mode toggle for desktop (fixed at bottom right) */}
+      {}
       <div className="hidden md:block fixed bottom-6 right-6 z-10">
         <div className="bg-white rounded-full shadow-lg overflow-hidden flex p-1">
           <button

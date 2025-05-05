@@ -5,7 +5,7 @@ import { AuthContext } from '../../context/AuthContext';
 const PrivateRoute = ({ element, requiredRole }) => {
   const { isAuthenticated, loading, currentUser } = useContext(AuthContext);
   
-  // Show loading indicator while checking auth
+  
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -14,17 +14,17 @@ const PrivateRoute = ({ element, requiredRole }) => {
     );
   }
   
-  // Redirect to login if not authenticated
+  
   if (!isAuthenticated) {
     return <Navigate to="/login" />;
   }
   
-  // Check for required role if specified
+  
   if (requiredRole && currentUser && currentUser.role !== requiredRole) {
     return <Navigate to="/" />;
   }
   
-  // Render the protected component
+  
   return element;
 };
 

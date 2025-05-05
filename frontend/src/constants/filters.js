@@ -1,9 +1,5 @@
-/**
- * Central configuration for filter options across the application
- * Used by both car listing form and search filters
- */
 
-// Car types
+
 export const CAR_TYPE_OPTIONS = [
   { value: 'sedan', label: 'Sedan' },
   { value: 'suv', label: 'SUV' },
@@ -14,7 +10,6 @@ export const CAR_TYPE_OPTIONS = [
   { value: 'convertible', label: 'Convertible' },
 ];
 
-// Car features - matching exactly what's in the ListCar component
 export const FEATURE_OPTIONS = [
   { value: 'airConditioning', label: 'Air Conditioning' },
   { value: 'bluetooth', label: 'Bluetooth' },
@@ -26,7 +21,6 @@ export const FEATURE_OPTIONS = [
   { value: 'childSeat', label: 'Child Seat' },
 ];
 
-// Common car colors
 export const COLOR_OPTIONS = [
   { value: 'black', label: 'Black' },
   { value: 'white', label: 'White' },
@@ -43,7 +37,6 @@ export const COLOR_OPTIONS = [
   { value: 'purple', label: 'Purple' },
 ];
 
-// Year options (from 2000 to current year + 1)
 export const YEAR_OPTIONS = (() => {
   const currentYear = new Date().getFullYear();
   const years = [];
@@ -53,7 +46,6 @@ export const YEAR_OPTIONS = (() => {
   return years;
 })();
 
-// Helper functions for feature conversions
 export const featureArrayToObject = (featureArray = []) => {
   const featureObject = {};
   FEATURE_OPTIONS.forEach(feature => {

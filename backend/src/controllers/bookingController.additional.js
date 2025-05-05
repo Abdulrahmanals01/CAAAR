@@ -1,4 +1,4 @@
-// Get user's bookings
+
 exports.getUserBookings = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -21,7 +21,7 @@ exports.getUserBookings = async (req, res) => {
       `;
       params = [userId];
     } else if (userRole === 'host') {
-      // For hosts, get all bookings for their cars
+      
       query = `
         SELECT b.*, c.brand, c.model, c.year, c.price_per_day, c.image,
           u.name as renter_name, b.renter_id, c.user_id as host_id
@@ -33,7 +33,7 @@ exports.getUserBookings = async (req, res) => {
       `;
       params = [userId];
     } else {
-      // For other roles, return both renter and host bookings
+      
       query = `
         SELECT b.*, c.brand, c.model, c.year, c.price_per_day, c.image,
           u_renter.name as renter_name, b.renter_id,
@@ -59,7 +59,6 @@ exports.getUserBookings = async (req, res) => {
   }
 };
 
-// Update booking status
 exports.updateBookingStatus = async (req, res) => {
   try {
     const bookingId = req.params.id;
@@ -68,33 +67,33 @@ exports.updateBookingStatus = async (req, res) => {
 
     console.log(`Updating booking ${bookingId} to status: ${status}`);
 
-    // Special handling for cancellation
+    
     if (status === 'canceled') {
       return cancelBooking(req, res, bookingId);
     }
 
-    // Special handling for acceptance
+    
     if (status === 'accepted') {
       return acceptBooking(req, res, bookingId);
     }
 
-    // Special handling for rejection
+    
     if (status === 'rejected') {
       return rejectBooking(req, res, bookingId);
     }
 
-    // For other statuses, continue with normal update
+    
     if (!['pending', 'completed'].includes(status)) {
       return res.status(400).json({ message: 'Invalid status' });
     }
 
-    // Special handling for completed status
+    
     if (status === 'completed') {
       const client = await db.pool.connect();
       try {
         await client.query('BEGIN');
 
-        // Get booking details first for verification
+        
         const bookingResult = await client.query(
           'SELECT b.*, c.user_id AS host_id FROM bookings b JOIN cars c ON b.car_id = c.id WHERE b.id = $1',
           [bookingId]
@@ -105,23 +104,23 @@ exports.updateBookingStatus = async (req, res) => {
           return res.status(404).json({ message: 'Booking not found' });
         }
 
-        // Verify the user is the host
+        
         const booking = bookingResult.rows[0];
         if (booking.host_id !== userId) {
           await client.query('ROLLBACK');
           return res.status(403).json({ message: 'Only the car owner can mark bookings as completed' });
         }
 
-        // Temporarily disable trigger
+        
         await client.query('ALTER TABLE bookings DISABLE TRIGGER check_booking_availability');
 
-        // Update booking
+        
         const result = await client.query(
           'UPDATE bookings SET status = $1 WHERE id = $2 RETURNING *',
           [status, bookingId]
         );
 
-        // Re-enable trigger
+        
         await client.query('ALTER TABLE bookings ENABLE TRIGGER check_booking_availability');
 
         await client.query('COMMIT');
@@ -130,7 +129,7 @@ exports.updateBookingStatus = async (req, res) => {
         return res.json(result.rows[0]);
       } catch (err) {
         await client.query('ROLLBACK');
-        // Make sure to re-enable the trigger even if there's an error
+        
         try {
           await client.query('ALTER TABLE bookings ENABLE TRIGGER check_booking_availability');
         } catch (enableErr) {
@@ -141,7 +140,7 @@ exports.updateBookingStatus = async (req, res) => {
         client.release();
       }
     } else {
-      // For other statuses, use normal update
+      
       const result = await db.query(
         'UPDATE bookings SET status = $1 WHERE id = $2 RETURNING *',
         [status, bookingId]
@@ -160,18 +159,17 @@ exports.updateBookingStatus = async (req, res) => {
   }
 };
 
-// Helper functions for booking status updates
 async function acceptBooking(req, res, bookingId) {
-  // Get a client from the pool for transaction
+  
   const client = await db.pool.connect();
 
   try {
     await client.query('BEGIN');
 
-    // Disable the check_booking_availability trigger temporarily
+    
     await client.query('ALTER TABLE bookings DISABLE TRIGGER check_booking_availability');
 
-    // Get the booking details
+    
     const bookingResult = await client.query(
       `SELECT b.*, c.user_id AS host_id, b.renter_id,
               u_renter.name AS renter_name
@@ -191,14 +189,14 @@ async function acceptBooking(req, res, bookingId) {
     const booking = bookingResult.rows[0];
     const { car_id, start_date, end_date, host_id, renter_id } = booking;
 
-    // Verify the current user is the host of this car
+    
     if (host_id !== req.user.id) {
       await client.query('ROLLBACK');
       await client.query('ALTER TABLE bookings ENABLE TRIGGER check_booking_availability');
       return res.status(403).json({ message: 'Only the car owner can accept bookings' });
     }
 
-    // Check if there are already any accepted bookings that overlap with this one
+    
     const overlapCheck = await client.query(
       `SELECT id FROM bookings
        WHERE car_id = $1
@@ -218,13 +216,13 @@ async function acceptBooking(req, res, bookingId) {
       });
     }
 
-    // Update this booking to 'accepted'
+    
     await client.query(
       'UPDATE bookings SET status = $1 WHERE id = $2',
       ['accepted', bookingId]
     );
 
-    // Send message from host to renter about the acceptance
+    
     const acceptMessage = `I've accepted your booking request for the dates ${new Date(start_date).toLocaleDateString()} to ${new Date(end_date).toLocaleDateString()}. Looking forward to it!`;
 
     await client.query(
@@ -232,7 +230,7 @@ async function acceptBooking(req, res, bookingId) {
       [host_id, renter_id, bookingId, acceptMessage]
     );
 
-    // Reject other pending bookings for the same car that overlap with this one
+    
     const rejectResult = await client.query(
       `UPDATE bookings
        SET status = 'rejected',
@@ -249,12 +247,12 @@ async function acceptBooking(req, res, bookingId) {
 
     console.log(`Rejected ${rejectResult.rowCount} overlapping bookings: ${JSON.stringify(rejectResult.rows.map(row => row.id))}`);
 
-    // Re-enable the trigger
+    
     await client.query('ALTER TABLE bookings ENABLE TRIGGER check_booking_availability');
 
     await client.query('COMMIT');
 
-    // Get the updated booking
+    
     const result = await client.query(
       'SELECT * FROM bookings WHERE id = $1',
       [bookingId]
@@ -265,7 +263,7 @@ async function acceptBooking(req, res, bookingId) {
   } catch (err) {
     await client.query('ROLLBACK');
 
-    // Make sure to re-enable the trigger even if there's an error
+    
     try {
       await client.query('ALTER TABLE bookings ENABLE TRIGGER check_booking_availability');
     } catch (enableErr) {
@@ -280,13 +278,13 @@ async function acceptBooking(req, res, bookingId) {
 }
 
 async function rejectBooking(req, res, bookingId) {
-  // Get a client from the pool for transaction
+  
   const client = await db.pool.connect();
 
   try {
     await client.query('BEGIN');
 
-    // Get the booking details
+    
     const bookingResult = await client.query(
       `SELECT b.*, c.user_id AS host_id, b.renter_id
        FROM bookings b
@@ -303,13 +301,13 @@ async function rejectBooking(req, res, bookingId) {
     const booking = bookingResult.rows[0];
     const { car_id, start_date, end_date, host_id, renter_id } = booking;
 
-    // Verify the current user is the host of this car
+    
     if (host_id !== req.user.id) {
       await client.query('ROLLBACK');
       return res.status(403).json({ message: 'Only the car owner can reject bookings' });
     }
 
-    // Check if there are already any accepted bookings that overlap with this one
+    
     const overlapCheck = await client.query(
       `SELECT id FROM bookings
        WHERE car_id = $1
@@ -321,14 +319,14 @@ async function rejectBooking(req, res, bookingId) {
       [car_id, bookingId, start_date, end_date]
     );
 
-    // Set rejection reason
+    
     const rejectionReason = overlapCheck.rows.length > 0
       ? 'This car has already been booked for these dates'
       : req.body.reason || 'Host declined the booking request';
 
     if (overlapCheck.rows.length > 0) {
-      // If there's an accepted booking that overlaps, we should update this one to rejected
-      // but with a specific reason
+      
+      
       await client.query(
         `UPDATE bookings
          SET status = 'rejected',
@@ -337,7 +335,7 @@ async function rejectBooking(req, res, bookingId) {
         [rejectionReason, bookingId]
       );
     } else {
-      // Normal rejection flow
+      
       await client.query(
         `UPDATE bookings
          SET status = 'rejected',
@@ -347,7 +345,7 @@ async function rejectBooking(req, res, bookingId) {
       );
     }
 
-    // Send message from host to renter about the rejection
+    
     const rejectMessage = `I'm sorry, but I had to decline your booking request for the dates ${new Date(start_date).toLocaleDateString()} to ${new Date(end_date).toLocaleDateString()}. ${rejectionReason}`;
 
     await client.query(
@@ -357,7 +355,7 @@ async function rejectBooking(req, res, bookingId) {
 
     await client.query('COMMIT');
 
-    // Get the updated booking
+    
     const result = await client.query(
       'SELECT * FROM bookings WHERE id = $1',
       [bookingId]
@@ -377,7 +375,7 @@ async function cancelBooking(req, res, bookingId) {
   try {
     const userId = req.user.id;
 
-    // First check if the booking exists and belongs to this user
+    
     const bookingCheck = await db.query(
       `SELECT b.*, c.user_id AS host_id
        FROM bookings b
@@ -392,27 +390,27 @@ async function cancelBooking(req, res, bookingId) {
 
     const booking = bookingCheck.rows[0];
 
-    // Check if the user is the renter who made this booking
+    
     if (booking.renter_id !== userId) {
       return res.status(403).json({ message: 'You can only cancel your own bookings' });
     }
 
-    // Get a client from the pool for transaction
+    
     const client = await db.pool.connect();
 
     try {
       await client.query('BEGIN');
 
-      // Disable the check_booking_availability trigger temporarily
+      
       await client.query('ALTER TABLE bookings DISABLE TRIGGER check_booking_availability');
 
-      // Update booking status to canceled
+      
       const result = await client.query(
         'UPDATE bookings SET status = $1 WHERE id = $2 RETURNING *',
         ['canceled', bookingId]
       );
 
-      // Send cancellation message from renter to host
+      
       const cancelMessage = `I've canceled my booking request for the dates ${new Date(booking.start_date).toLocaleDateString()} to ${new Date(booking.end_date).toLocaleDateString()}.`;
 
       await client.query(
@@ -420,7 +418,7 @@ async function cancelBooking(req, res, bookingId) {
         [userId, booking.host_id, bookingId, cancelMessage]
       );
 
-      // Re-enable the trigger
+      
       await client.query('ALTER TABLE bookings ENABLE TRIGGER check_booking_availability');
 
       await client.query('COMMIT');
@@ -430,7 +428,7 @@ async function cancelBooking(req, res, bookingId) {
     } catch (err) {
       await client.query('ROLLBACK');
 
-      // Make sure to re-enable the trigger even if there's an error
+      
       try {
         await client.query('ALTER TABLE bookings ENABLE TRIGGER check_booking_availability');
       } catch (enableErr) {

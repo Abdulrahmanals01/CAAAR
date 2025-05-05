@@ -14,7 +14,7 @@ const RatingForm = ({ booking, isRenter, onSuccess, onCancel }) => {
     e.preventDefault();
     setError('');
     
-    // Validate ratings
+    
     if (userRating < 1) {
       setError('Please provide a rating for the user');
       return;
@@ -28,7 +28,7 @@ const RatingForm = ({ booking, isRenter, onSuccess, onCancel }) => {
     setLoading(true);
     
     try {
-      // Create the rating payload
+      
       const ratingData = {
         booking_id: booking.id,
         rating_for: isRenter ? booking.host_id : booking.renter_id,
@@ -37,7 +37,7 @@ const RatingForm = ({ booking, isRenter, onSuccess, onCancel }) => {
         comment
       };
       
-      // If renter, add car rating
+      
       if (isRenter) {
         ratingData.car_rating = carRating;
         ratingData.car_comment = carComment;

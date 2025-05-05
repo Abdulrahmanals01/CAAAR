@@ -8,7 +8,6 @@ const containerStyle = {
   borderRadius: '0.5rem'
 };
 
-// Saudi Arabia default center (Riyadh)
 const defaultCenter = {
   lat: 24.7136,
   lng: 46.6753
@@ -19,11 +18,11 @@ const SearchMapView = ({ cars = [], searchLocation }) => {
   const [selectedCar, setSelectedCar] = useState(null);
   const [mapError, setMapError] = useState(false);
   
-  // Load Google Maps API with consistent settings
+  
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY,
-    // Keep libraries array empty for consistency
+    
     libraries: []
   });
 
@@ -31,7 +30,7 @@ const SearchMapView = ({ cars = [], searchLocation }) => {
     try {
       setMap(map);
       
-      // Center map on search location if provided
+      
       if (searchLocation) {
         const geocoder = new window.google.maps.Geocoder();
         geocoder.geocode({ address: searchLocation + ', Saudi Arabia' }, (results, status) => {
@@ -40,7 +39,7 @@ const SearchMapView = ({ cars = [], searchLocation }) => {
             map.setCenter(location);
             map.setZoom(12);
             
-            // Add a marker for the search location
+            
             new window.google.maps.Marker({
               position: location,
               map: map,
@@ -58,7 +57,7 @@ const SearchMapView = ({ cars = [], searchLocation }) => {
         });
       }
       
-      // If we have cars with locations, fit the map to show all markers
+      
       if (cars.length > 0 && cars.some(car => car.latitude && car.longitude)) {
         const bounds = new window.google.maps.LatLngBounds();
         
@@ -75,7 +74,7 @@ const SearchMapView = ({ cars = [], searchLocation }) => {
           }
         });
         
-        // Only adjust if we have valid bounds and no search location
+        
         if (!bounds.isEmpty() && !searchLocation) {
           map.fitBounds(bounds);
         }
@@ -89,7 +88,7 @@ const SearchMapView = ({ cars = [], searchLocation }) => {
     setMap(null);
   }, []);
 
-  // Display an error message if the map fails to load
+  
   if (loadError || mapError) {
     return (
       <div className="border border-gray-300 rounded-lg flex flex-col items-center justify-center h-64 bg-gray-100 p-4">
@@ -101,7 +100,7 @@ const SearchMapView = ({ cars = [], searchLocation }) => {
     );
   }
 
-  // Display a loading state while the map is initializing
+  
   if (!isLoaded) {
     return (
       <div className="border border-gray-300 rounded-lg flex items-center justify-center h-64 bg-gray-100">
@@ -110,7 +109,7 @@ const SearchMapView = ({ cars = [], searchLocation }) => {
     );
   }
   
-  // Check if any cars have location data
+  
   const carsWithLocation = cars.filter(car => car.latitude && car.longitude);
   
   if (carsWithLocation.length === 0) {

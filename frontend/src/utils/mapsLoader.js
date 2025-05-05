@@ -1,16 +1,14 @@
 import { Loader } from '@googlemaps/js-api-loader';
 
-// Create a singleton loader instance with complete configuration
 const loader = new Loader({
   apiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY,
   version: 'weekly',
   libraries: ['places'],
   language: 'en',
-  region: 'SA', // Set to Saudi Arabia
+  region: 'SA', 
   authReferrerPolicy: 'origin'
 });
 
-// Simple error handler for maps loading failures
 const handleMapsError = (error) => {
   console.error('Google Maps loading error:', error);
   return {
@@ -19,11 +17,9 @@ const handleMapsError = (error) => {
   };
 };
 
-// Create a named export object
 const mapsService = {
   load: () => loader.load().catch(handleMapsError),
   handleMapsError
 };
 
-// Export the service
 export default mapsService;

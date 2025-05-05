@@ -21,22 +21,22 @@ const Register = () => {
   const [touchedFields, setTouchedFields] = useState({});
   const navigate = useNavigate();
 
-  // Check age whenever date of birth changes
+  
   useEffect(() => {
     if (formData.date_of_birth) {
       const birthDate = new Date(formData.date_of_birth);
       const today = new Date();
       
-      // Calculate age
+      
       let age = today.getFullYear() - birthDate.getFullYear();
       const monthDiff = today.getMonth() - birthDate.getMonth();
       
-      // Adjust age if birthday hasn't occurred yet this year
+      
       if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
         age--;
       }
       
-      // Set underage flag
+      
       setIsUnderage(age < 18);
     }
   }, [formData.date_of_birth]);
@@ -62,7 +62,7 @@ const Register = () => {
     if (file) {
       setLicenseImage(file);
 
-      // Create preview
+      
       const reader = new FileReader();
       reader.onload = () => {
         setImagePreview(reader.result);
@@ -81,7 +81,7 @@ const Register = () => {
     setError('');
     setValidationErrors([]);
     
-    // Mark all fields as touched
+    
     const allFields = {
       name: true,
       email: true,
@@ -95,18 +95,18 @@ const Register = () => {
     };
     setTouchedFields(allFields);
 
-    // Validate driver's license image is provided
+    
     if (!licenseImage) {
-      return; // Let the field-level validation handle this
+      return; 
     }
 
-    // Validate age is 18 or older
+    
     if (isUnderage) {
-      return; // Let the field-level validation handle this
+      return; 
     }
 
     try {
-      // Create FormData object for multipart/form-data (file upload)
+      
       const formDataObj = new FormData();
       formDataObj.append('name', formData.name);
       formDataObj.append('email', formData.email);
@@ -117,10 +117,10 @@ const Register = () => {
       formDataObj.append('gender', formData.gender);
       formDataObj.append('date_of_birth', formData.date_of_birth);
 
-      // Append the license image file
+      
       formDataObj.append('licenseImage', licenseImage);
 
-      // Send registration request
+      
       const response = await axios({
         method: 'post',
         url: 'http://localhost:5000/api/auth/register',
@@ -225,7 +225,7 @@ const Register = () => {
           )}
         </div>
 
-        {/* Gender */}
+        {}
         <div className="mb-4">
           <label className="block text-gray-700 mb-2">
             Gender <span className="text-red-500">*</span>
@@ -243,7 +243,7 @@ const Register = () => {
           </select>
         </div>
 
-        {/* Date of Birth with age validation */}
+        {}
         <div className="mb-4">
           <label className="block text-gray-700 mb-2">
             Date of Birth (Must be 18+) <span className="text-red-500">*</span>
@@ -292,7 +292,7 @@ const Register = () => {
           )}
         </div>
 
-        {/* Driver's License Image Upload */}
+        {}
         <div className="mb-4">
           <label className="block text-gray-700 mb-2">
             Driver's License Image <span className="text-red-500">*</span>
@@ -305,14 +305,6 @@ const Register = () => {
             className="w-full p-2 border rounded"
             required
           />
-          {touchedFields.licenseImage && !licenseImage && (
-            <div className="mt-1 text-red-500 flex items-center">
-              <span className="bg-yellow-500 text-white rounded-full w-5 h-5 flex items-center justify-center mr-2">!</span>
-              Please choose a file.
-            </div>
-          )}
-          
-          {/* Image Preview */}
           {imagePreview && (
             <div className="mt-2">
               <p className="text-sm text-gray-500 mb-1">Preview:</p>

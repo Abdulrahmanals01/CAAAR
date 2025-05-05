@@ -1,6 +1,5 @@
 import axios from '../utils/axiosConfig';
 
-// Create a new rating
 export const createRating = async (ratingData) => {
   try {
     const response = await axios.post('/api/ratings', ratingData);
@@ -14,7 +13,6 @@ export const createRating = async (ratingData) => {
   }
 };
 
-// Check if user can rate a booking
 export const checkRatingEligibility = async (bookingId) => {
   try {
     const response = await axios.get(`/api/ratings/check/${bookingId}`);
@@ -28,7 +26,6 @@ export const checkRatingEligibility = async (bookingId) => {
   }
 };
 
-// Get ratings for a car
 export const getCarRatings = async (carId) => {
   try {
     const response = await axios.get(`/api/ratings/car/${carId}`);
@@ -42,7 +39,6 @@ export const getCarRatings = async (carId) => {
   }
 };
 
-// Get ratings for a user
 export const getUserRatings = async (userId) => {
   try {
     const response = await axios.get(`/api/ratings/user/${userId}`);

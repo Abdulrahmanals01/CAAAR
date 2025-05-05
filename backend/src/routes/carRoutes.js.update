@@ -1,2 +1,0 @@
-// Add this route to your existing carRoutes.js file
-router.get('/:id/with-ratings', carController.getCarWithRatings);

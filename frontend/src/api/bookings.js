@@ -1,6 +1,5 @@
 import axios from '../utils/axiosConfig';
 
-// Create a new booking
 export const createBooking = async (bookingData) => {
   try {
     const response = await axios.post('/api/bookings', bookingData);
@@ -13,7 +12,6 @@ export const createBooking = async (bookingData) => {
   }
 };
 
-// Get user's bookings
 export const getUserBookings = async () => {
   try {
     const response = await axios.get('/api/bookings/user');
@@ -26,7 +24,6 @@ export const getUserBookings = async () => {
   }
 };
 
-// Update booking status (accept/reject/cancel)
 export const updateBookingStatus = async (bookingId, status) => {
   try {
     const response = await axios.put(

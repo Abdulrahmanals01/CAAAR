@@ -4,7 +4,6 @@ const { body } = require('express-validator');
 const supportController = require('../controllers/supportController');
 const authMiddleware = require('../middleware/auth');
 
-// Public route for submitting support inquiries
 router.post(
   '/inquiry',
   [
@@ -16,7 +15,6 @@ router.post(
   supportController.submitInquiry
 );
 
-// Get authenticated user's information for the support form
 router.get(
   '/user-info',
   authMiddleware.authenticate,
