@@ -4,7 +4,6 @@ import { getUserProfile } from '../api/profiles';
 import { getUserRatings } from '../api/ratings';
 import { AuthContext } from '../context/AuthContext';
 import StarRating from '../components/common/StarRating';
-import RatingCard from '../components/ratings/RatingCard';
 import { formatDistanceToNow } from 'date-fns';
 
 const UserProfile = () => {

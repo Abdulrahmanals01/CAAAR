@@ -140,10 +140,8 @@ const BookingRequests = () => {
     }
   };
 
-  const handleRateBooking = (bookingId) => {
-    console.log(`Navigating to rate booking ${bookingId}`);
-    navigate(`/review/${bookingId}`);
-  };
+  // Rating is now handled directly in the dashboard
+  const handleRateBooking = () => {};
 
   const handleRefresh = () => {
     setRefreshKey(prevKey => prevKey + 1);

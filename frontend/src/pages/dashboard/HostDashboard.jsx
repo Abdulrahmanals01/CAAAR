@@ -104,7 +104,7 @@ const HostDashboard = () => {
       
       setStatistics({
         totalEarnings,
-        totalBookings: bookings.length,
+        totalBookings: completedBookings.length,
         activeCars,
         averageRating
       });
@@ -118,7 +118,7 @@ const HostDashboard = () => {
       
       setStatistics({
         totalEarnings,
-        totalBookings: bookings.length,
+        totalBookings: completedBookings.length,
         activeCars,
         averageRating: 0
       });
