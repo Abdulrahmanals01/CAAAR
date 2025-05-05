@@ -669,7 +669,7 @@ const HostDashboard = () => {
                 </h3>
                 <p className="text-gray-600 mb-2">{car.location}</p>
                 <p className="text-green-600 font-bold">
-                  ${car.price_per_day}/day
+                  {car.price_per_day} SAR/day
                 </p>
 
                 <div className="mt-4">

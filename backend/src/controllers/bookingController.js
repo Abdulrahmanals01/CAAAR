@@ -117,7 +117,7 @@ const isCarAvailable = async (carId, startDate, endDate) => {
     const bookingCheck = await db.query(
       `SELECT id FROM bookings
        WHERE car_id = $1
-       AND status IN ('accepted', 'pending')
+       AND status = 'accepted'
        AND (
          (start_date <= $3 AND end_date >= $2) -- Overlap check
        )`,
@@ -191,6 +191,20 @@ const createBooking = async (req, res) => {
     if (userStatusCheck.rows[0] && (userStatusCheck.rows[0].status === 'frozen' || userStatusCheck.rows[0].status === 'banned')) {
       return res.status(403).json({
         message: `Your account is currently ${userStatusCheck.rows[0].status}. You cannot make bookings.`
+      });
+    }
+    
+    // Check if the user already has a pending booking for this car
+    const pendingBookingCheck = await db.query(
+      `SELECT COUNT(*) as count FROM bookings 
+       WHERE car_id = $1 AND renter_id = $2 AND status = 'pending'`,
+      [car_id, renter_id]
+    );
+    
+    if (parseInt(pendingBookingCheck.rows[0].count) > 0) {
+      return res.status(409).json({
+        message: 'You already have a pending booking request for this car',
+        has_pending_booking: true
       });
     }
 

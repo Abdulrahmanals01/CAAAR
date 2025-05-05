@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getCarById } from '../api/cars';
 import { getCarRatings } from '../api/ratings';
 import useAuth from '../hooks/useAuth';
@@ -10,6 +10,7 @@ import { formatCurrency } from '../utils/dataFormatter';
 
 const CarDetails = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [car, setCar] = useState(null);
   const [ratings, setRatings] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -387,6 +388,25 @@ const CarDetails = () => {
                   <p className="text-gray-600">
                     You can manage this listing from your host dashboard.
                   </p>
+                </div>
+              ) : car.has_pending_booking ? (
+                <div className="bg-white p-6 rounded-lg shadow-md">
+                  <h2 className="text-xl font-semibold mb-4">Book this car</h2>
+                  <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4 rounded">
+                    You already have a pending booking request for this car. Please wait for the host to respond to your existing request.
+                  </div>
+                  <div className="bg-gray-100 p-4 rounded-lg mb-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">Price</span>
+                      <span className="text-2xl font-bold">{formatCurrency(car.price_per_day).replace('.00', '')}/day</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => navigate('/dashboard/renter')}
+                    className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition"
+                  >
+                    View Your Bookings
+                  </button>
                 </div>
               ) : (
                 <div>

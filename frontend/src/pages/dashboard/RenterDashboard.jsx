@@ -247,7 +247,7 @@ const RenterDashboard = () => {
                 <Link to={`/cars/${car.id}`} key={car.id} className="border rounded p-4 hover:shadow-lg">
                   <h4 className="font-bold">{car.brand} {car.model}</h4>
                   <p className="text-gray-600">{car.location}</p>
-                  <p className="text-green-600">${car.price_per_day}/day</p>
+                  <p className="text-green-600">{car.price_per_day} SAR/day</p>
                 </Link>
               ))}
             </div>
@@ -331,7 +331,7 @@ const RenterDashboard = () => {
                       {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                     </span>
                   </p>
-                  <p className="text-green-600 font-bold mt-2">Total: ${booking.total_price}</p>
+                  <p className="text-green-600 font-bold mt-2">Total: {booking.total_price} SAR</p>
                 </div>
 
                 <div className="mt-4 space-y-2">

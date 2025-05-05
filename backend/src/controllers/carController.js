@@ -142,32 +142,59 @@ exports.getAllCars = async (req, res) => {
     console.log(`Found ${result.rows.length} cars`);
 
     
+    // Check for authenticated user
+    const userId = req.user ? req.user.id : null;
+    let availableCars = result.rows;
+    
     if (start_date && end_date) {
-      
-      const bookingConflictQuery = `
+      // Get all booking conflicts (accepted bookings from anyone)
+      const acceptedBookingConflictQuery = `
         SELECT DISTINCT b.car_id
         FROM bookings b
-        WHERE b.status IN ('accepted', 'pending')
+        WHERE b.status = 'accepted'
           AND (
             (b.start_date <= $1 AND b.end_date >= $2) -- Overlap check
           )
       `;
 
-      const bookingConflicts = await db.query(bookingConflictQuery, [end_date, start_date]);
+      const acceptedBookingConflicts = await db.query(acceptedBookingConflictQuery, [end_date, start_date]);
+      const acceptedConflictCarIds = new Set(acceptedBookingConflicts.rows.map(row => row.car_id));
 
+      // Filter out cars with accepted booking conflicts
+      availableCars = availableCars.filter(car => !acceptedConflictCarIds.has(car.id));
       
-      const conflictCarIds = new Set(bookingConflicts.rows.map(row => row.car_id));
+      // If user is authenticated, mark cars they've already requested
+      if (userId) {
+        // Get all cars this user has pending booking requests for
+        console.log(`Finding cars with pending bookings for user ${userId}`);
+        const userPendingBookingsQuery = `
+          SELECT DISTINCT b.car_id
+          FROM bookings b
+          WHERE b.renter_id = $1 
+            AND b.status = 'pending'
+            AND (
+              (b.start_date <= $2 AND b.end_date >= $3) -- Overlap check
+            )
+        `;
+        
+        const userPendingBookings = await db.query(userPendingBookingsQuery, [userId, end_date, start_date]);
+        const userPendingCarIds = new Set(userPendingBookings.rows.map(row => row.car_id));
+        
+        // Mark cars with pending bookings but don't filter them out
+        availableCars = availableCars.map(car => {
+          if (userPendingCarIds.has(car.id)) {
+            return { ...car, has_pending_booking: true };
+          }
+          return car;
+        });
+        
+        console.log(`Marked ${userPendingCarIds.size} cars with pending bookings by the current user`);
+      }
 
-      
-      const availableCars = result.rows.filter(car => !conflictCarIds.has(car.id));
-
-      console.log(`Filtered out ${result.rows.length - availableCars.length} cars with booking conflicts`);
-
-      res.json(availableCars);
-    } else {
-      
-      res.json(result.rows);
+      console.log(`Filtered out ${result.rows.length - availableCars.length} cars with booking conflicts total`);
     }
+      
+    res.json(availableCars);
   } catch (err) {
     console.error('Error fetching cars:', err);
     res.status(500).json({ message: 'Server error while fetching cars' });
@@ -208,6 +235,25 @@ exports.getCarById = async (req, res) => {
       }
 
       car.image_url = `${baseUrl}/${imagePath}`;
+    }
+
+    // Check if the authenticated user has a pending booking for this car
+    const userId = req.user ? req.user.id : null;
+    if (userId) {
+      const pendingBookingQuery = `
+        SELECT COUNT(*) as pending_count
+        FROM bookings
+        WHERE car_id = $1
+          AND renter_id = $2
+          AND status = 'pending'
+      `;
+      
+      const pendingBookingResult = await db.query(pendingBookingQuery, [carId, userId]);
+      const pendingCount = parseInt(pendingBookingResult.rows[0].pending_count);
+      
+      if (pendingCount > 0) {
+        car.has_pending_booking = true;
+      }
     }
 
     res.json(car);

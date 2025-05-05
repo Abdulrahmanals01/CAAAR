@@ -130,6 +130,24 @@ const BookingForm = ({ car }) => {
     );
   }
   
+  // If car has a pending booking from this user, show a message instead of the booking form
+  if (car && car.has_pending_booking) {
+    return (
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <h2 className="text-xl font-semibold mb-4">Book this car</h2>
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4 rounded">
+          You already have a pending booking request for this car. Please wait for the host to respond to your existing request.
+        </div>
+        <button
+          onClick={() => navigate('/dashboard/renter')}
+          className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition"
+        >
+          View Your Bookings
+        </button>
+      </div>
+    );
+  }
+
   // If user is a host, admin, or car owner, or if car doesn't exist, don't show booking form
   if (user.role === 'host' || user.role === 'admin' || isOwnCar || !car) {
     return null;

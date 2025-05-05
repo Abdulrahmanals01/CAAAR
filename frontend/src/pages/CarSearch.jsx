@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { getCars } from '../api/cars';
 import CarCard from '../components/cars/CarCard';
 import MapView from '../components/cars/MapView';
 import CarFilter from '../components/cars/CarFilter';
+import { AuthContext } from '../context/AuthContext';
 
 const CarSearch = () => {
   const location = useLocation();
@@ -13,6 +14,10 @@ const CarSearch = () => {
   const [viewMode, setViewMode] = useState('split'); 
   const [selectedCar, setSelectedCar] = useState(null);
   const searchTimeoutRef = useRef(null);
+  const { user } = useContext(AuthContext);
+  // Store current user ID to detect changes
+  const userIdRef = useRef(user?.id);
+  
   const [filters, setFilters] = useState({
     min_price: '',
     max_price: '',
@@ -32,6 +37,23 @@ const CarSearch = () => {
     endTime: '10:00'
   });
 
+  // Reset search when user changes
+  useEffect(() => {
+    if (user?.id !== userIdRef.current) {
+      // User has changed, clear cars and force new search
+      console.log('User changed from', userIdRef.current, 'to', user?.id, '- refreshing car search');
+      userIdRef.current = user?.id;
+      setCars([]);
+      setLoading(true);
+      
+      // Force immediate search
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+      
+      fetchCars();
+    }
+  }, [user]);
   
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
@@ -71,6 +93,59 @@ const CarSearch = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  const fetchCars = async () => {
+    try {
+      console.log('Fetching cars with params:', { ...searchParams, ...filters });
+      
+      // Prepare search filters
+      const searchFilters = {
+        location: searchParams.location,
+        start_date: searchParams.startDate,
+        end_date: searchParams.endDate,
+        min_price: filters.min_price,
+        max_price: filters.max_price,
+        min_year: filters.min_year,
+        max_year: filters.max_year,
+        car_type: filters.car_type === 'all' ? undefined : filters.car_type,
+        colors: filters.colors.length > 0 ? filters.colors : undefined,
+        features: filters.features.length > 0 ? filters.features : undefined
+      };
+
+      const response = await getCars(searchFilters);
+
+      if (response.success) {
+        
+        const processedCars = response.data.map(car => {
+          
+          if (car.latitude && car.longitude) {
+            return {
+              ...car,
+              latitude: parseFloat(car.latitude),
+              longitude: parseFloat(car.longitude)
+            };
+          }
+          return car;
+        });
+
+        console.log("Fetched cars:", processedCars.length);
+        console.log("Cars with valid location data:", processedCars.filter(car =>
+          car.latitude && car.longitude &&
+          !isNaN(car.latitude) && !isNaN(car.longitude)).length);
+
+        setCars(processedCars);
+        setError(null);
+      } else {
+        setError(response.error || 'Failed to load car listings');
+        setCars([]);
+      }
+    } catch (err) {
+      console.error('Error fetching cars:', err);
+      setError('Failed to load car listings. Please try again later.');
+      setCars([]);
+    } finally {
+      setLoading(false);
+    }
+  };
   
   useEffect(() => {
     // Don't reset the cars array right away - wait for new data
@@ -82,59 +157,7 @@ const CarSearch = () => {
     }
     
     // Set a timeout for the search to prevent too many API calls
-    searchTimeoutRef.current = setTimeout(async () => {
-      try {
-        console.log('Fetching cars with params:', { ...searchParams, ...filters });
-        
-        // Prepare search filters
-        const searchFilters = {
-          location: searchParams.location,
-          start_date: searchParams.startDate,
-          end_date: searchParams.endDate,
-          min_price: filters.min_price,
-          max_price: filters.max_price,
-          min_year: filters.min_year,
-          max_year: filters.max_year,
-          car_type: filters.car_type === 'all' ? undefined : filters.car_type,
-          colors: filters.colors.length > 0 ? filters.colors : undefined,
-          features: filters.features.length > 0 ? filters.features : undefined
-        };
-
-        const response = await getCars(searchFilters);
-
-        if (response.success) {
-          
-          const processedCars = response.data.map(car => {
-            
-            if (car.latitude && car.longitude) {
-              return {
-                ...car,
-                latitude: parseFloat(car.latitude),
-                longitude: parseFloat(car.longitude)
-              };
-            }
-            return car;
-          });
-
-          console.log("Fetched cars:", processedCars.length);
-          console.log("Cars with valid location data:", processedCars.filter(car =>
-            car.latitude && car.longitude &&
-            !isNaN(car.latitude) && !isNaN(car.longitude)).length);
-
-          setCars(processedCars);
-          setError(null);
-        } else {
-          setError(response.error || 'Failed to load car listings');
-          setCars([]);
-        }
-      } catch (err) {
-        console.error('Error fetching cars:', err);
-        setError('Failed to load car listings. Please try again later.');
-        setCars([]);
-      } finally {
-        setLoading(false);
-      }
-    }, 500); 
+    searchTimeoutRef.current = setTimeout(fetchCars, 500); 
     
     
     return () => {
