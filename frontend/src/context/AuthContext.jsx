@@ -46,8 +46,14 @@ export const AuthProvider = ({ children }) => {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       setUser(user);
 
+      // Check if there's a redirect URL saved
+      const redirectUrl = localStorage.getItem('redirectAfterLogin');
       
-      if (user.role === 'admin') {
+      if (redirectUrl) {
+        // Clear the redirect URL from localStorage
+        localStorage.removeItem('redirectAfterLogin');
+        navigate(redirectUrl);
+      } else if (user.role === 'admin') {
         navigate('/admin/dashboard');
       } else {
         navigate('/');

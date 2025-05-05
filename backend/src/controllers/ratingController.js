@@ -67,6 +67,20 @@ exports.createRating = async (req, res) => {
         message: 'You have already rated this user for this booking' 
       });
     }
+    
+    // Check if this booking_id already has a rating (due to the unique constraint)
+    const bookingRating = await db.query(
+      'SELECT * FROM ratings WHERE booking_id = $1',
+      [booking_id]
+    );
+    
+    if (bookingRating.rows.length > 0) {
+      // We need to update instead of insert due to the unique constraint on booking_id
+      return res.status(400).json({
+        message: 'This booking already has a rating. The system currently only supports one rating per booking.',
+        solution: 'Please contact support to enable multiple ratings per booking.'
+      });
+    }
 
     
     const client = await db.pool.connect();
@@ -153,6 +167,7 @@ exports.checkRatingEligibility = async (req, res) => {
 
     
     let hasRated = false;
+    let bookingHasRating = false;
     
     if (isRenter) {
       
@@ -171,12 +186,21 @@ exports.checkRatingEligibility = async (req, res) => {
       
       hasRated = hostRating.rows.length > 0;
     }
+    
+    // Check if this booking already has any rating (due to the unique constraint)
+    const bookingRating = await db.query(
+      'SELECT * FROM ratings WHERE booking_id = $1',
+      [booking_id]
+    );
+    
+    bookingHasRating = bookingRating.rows.length > 0;
 
     res.json({
-      eligible: !hasRated,
+      eligible: !hasRated && (!bookingHasRating || (isHost && bookingHasRating)),
       isRenter,
       isHost,
       hasRated,
+      bookingHasRating,
       booking
     });
   } catch (err) {
@@ -277,19 +301,10 @@ exports.getCarRatings = async (req, res) => {
       averageRating = sum / ratings.length;
     }
 
-    
-    const categories = {
-      cleanliness: 4.8,
-      maintenance: 4.7,
-      communication: 4.9,
-      convenience: 4.6
-    };
-
     res.json({
       ratings,
       averageRating,
-      totalRatings: ratings.length,
-      categories
+      totalRatings: ratings.length
     });
   } catch (err) {
     console.error('Error getting car ratings:', err);

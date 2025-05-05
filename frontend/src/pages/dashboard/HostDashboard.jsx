@@ -66,8 +66,27 @@ const HostDashboard = () => {
       console.log('Filtered host bookings:', hostBookings);
       setBookingRequests(hostBookings);
 
+      // Make sure each booking has the required fields for ratings
+      const validHostBookings = hostBookings.map(booking => {
+        // Ensure each booking has a renter_id if it doesn't already
+        if (!booking.renter_id) {
+          console.log(`Adding missing renter_id to booking ${booking.id}`);
+          if (booking.user_id) {
+            // If user_id exists, this is the renter's ID
+            return { ...booking, renter_id: booking.user_id };
+          } else if (booking.car_user_id) {
+            // For some queries, the renter might be referenced differently
+            return { ...booking, renter_id: booking.car_user_id };
+          }
+        }
+        return booking;
+      });
+      
+      console.log('Processed bookings with renter_id:', validHostBookings);
+      setBookingRequests(validHostBookings);
+      
       // Check rating eligibility for completed bookings
-      const completedBookings = hostBookings.filter(booking => booking.status === 'completed');
+      const completedBookings = validHostBookings.filter(booking => booking.status === 'completed');
       for (const booking of completedBookings) {
         await checkRatingEligibilityForBooking(booking.id);
       }
@@ -291,13 +310,41 @@ const HostDashboard = () => {
         return;
       }
       
+      console.log("Booking data:", booking);
+      
+      // Extract renter_id from the booking
+      const renterId = booking.renter_id;
+      
+      if (!renterId) {
+        console.error("Missing renter_id in booking:", booking);
+        // Log more details to help diagnose the issue
+        console.error("Booking object keys:", Object.keys(booking));
+        console.error("Potential renter identifiers:", {
+          user_id: booking.user_id,
+          renter_id: booking.renter_id,
+          car_user_id: booking.car_user_id
+        });
+        
+        setRatingError("Could not determine renter for this booking. Please try refreshing the page.");
+        return;
+      }
+      
+      // Verify car_id exists
+      if (!booking.car_id) {
+        console.error("Missing car_id in booking:", booking);
+        setRatingError("Missing car information. Please try refreshing the page.");
+        return;
+      }
+      
       const ratingData = {
         booking_id: ratingBookingId,
-        rating_for: booking.renter_id,
+        rating_for: renterId,
         car_id: booking.car_id,
         rating: ratingValue,
         comment: ratingComment
       };
+      
+      console.log("Sending rating data:", ratingData);
       
       const response = await createRating(ratingData);
       
@@ -320,11 +367,36 @@ const HostDashboard = () => {
           fetchHostData(); // Refresh data after rating
         }, 2000);
       } else {
-        setRatingError(response.error || 'Failed to submit rating');
+        console.error("Rating API error:", response.error);
+        
+        // Special handling for unique constraint violation on booking_id
+        if (response.error && response.error.includes("already has a rating")) {
+          setRatingError(response.error);
+          
+          // Update the UI to show that this booking can't be rated again
+          setRatingEligibility(prev => ({
+            ...prev,
+            [ratingBookingId]: {
+              ...prev[ratingBookingId],
+              eligible: false,
+              hasRated: true
+            }
+          }));
+          
+          // Close modal after 3 seconds
+          setTimeout(() => {
+            handleCloseRatingModal();
+            fetchHostData(); // Refresh data after rating
+          }, 3000);
+        } else {
+          setRatingError(response.error || 'Failed to submit rating');
+        }
       }
     } catch (err) {
       setRatingError('An error occurred while submitting your rating');
       console.error('Rating submission error:', err);
+      // Log the entire error object for debugging
+      console.error('Error details:', JSON.stringify(err, null, 2));
     }
   };
 
@@ -529,6 +601,14 @@ const HostDashboard = () => {
                               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                             </svg>
                             Rated
+                          </span>
+                        )}
+                        {ratingEligibility[booking.id]?.bookingHasRating && !ratingEligibility[booking.id]?.hasRated && (
+                          <span className="inline-flex items-center bg-gray-100 text-gray-600 px-4 py-2 rounded">
+                            <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-1-5a1 1 0 011-1h.01a1 1 0 110 2H10a1 1 0 01-1-1zm1-8a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                            Rating Unavailable
                           </span>
                         )}
                       </>

@@ -39,6 +39,9 @@ const CarDetails = () => {
           }
           
           setCar(carData);
+          
+          // For debugging car data structure
+          console.log("Car data:", carData);
 
           
           setIsOwner(carData.user_id === userId);
@@ -128,16 +131,6 @@ const CarDetails = () => {
             >
               REVIEWS
             </button>
-            <button
-              onClick={() => setActiveTab('location')}
-              className={`py-4 px-6 font-medium ${
-                activeTab === 'location'
-                  ? 'border-b-2 border-blue-500 text-blue-600'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              LOCATION
-            </button>
           </div>
         </div>
 
@@ -166,13 +159,8 @@ const CarDetails = () => {
 
             {}
             <div className="flex items-center mb-6">
-              <div className="text-2xl font-bold mr-2">{averageRating.toFixed(1)}</div>
-              <StarRating rating={averageRating} size="md" />
-              <span className="ml-2 text-gray-600">
-                ({totalRatings} {totalRatings === 1 ? 'rating' : 'ratings'})
-              </span>
               {car.host_rating && car.host_rating >= 4.8 && (
-                <div className="ml-4 px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm">
+                <div className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm">
                   All-Star Host
                 </div>
               )}
@@ -204,12 +192,15 @@ const CarDetails = () => {
                   </div>
                 </div>
 
-                {car.description && (
-                  <div className="mb-6">
-                    <h3 className="text-lg font-semibold mb-2">Description</h3>
+                {/* Car Description */}
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold mb-2 border-b pb-2">Description</h3>
+                  {car.description ? (
                     <p className="text-gray-700">{car.description}</p>
-                  </div>
-                )}
+                  ) : (
+                    <p className="text-gray-500 italic">No description provided for this vehicle.</p>
+                  )}
+                </div>
 
                 {}
                 <div className="border-t border-gray-200 pt-6 mt-6">
@@ -246,30 +237,88 @@ const CarDetails = () => {
 
             {activeTab === 'features' && (
               <div>
-                <h2 className="text-xl font-semibold mb-4">Car Features</h2>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex items-center">
-                    <svg className="w-6 h-6 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">  
-
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>{car.color} exterior</span>
-                  </div>
-                  <div className="flex items-center">
-                    <svg className="w-6 h-6 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">  
-
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>{car.mileage} km mileage</span>
-                  </div>
-                  <div className="flex items-center">
-                    <svg className="w-6 h-6 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">  
-
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span>Model year: {car.year}</span>
+                <h2 className="text-xl font-semibold mb-6">Car Details & Features</h2>
+                
+                {/* Basic Info Section */}
+                <div className="mb-8">
+                  <h3 className="text-lg font-semibold mb-3 border-b pb-2">Basic Information</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex items-center">
+                      <svg className="w-6 h-6 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                      </svg>
+                      <span><strong>Brand & Model:</strong> {car.brand} {car.model}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <svg className="w-6 h-6 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <span><strong>Year:</strong> {car.year}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <svg className="w-6 h-6 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                      </svg>
+                      <span><strong>Color:</strong> {car.color}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <svg className="w-6 h-6 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      <span><strong>Mileage:</strong> {car.mileage} km</span>
+                    </div>
+                    {car.car_type && (
+                      <div className="flex items-center">
+                        <svg className="w-6 h-6 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                        <span><strong>Car Type:</strong> {car.car_type}</span>
+                      </div>
+                    )}
+                    {car.transmission && (
+                      <div className="flex items-center">
+                        <svg className="w-6 h-6 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                        </svg>
+                        <span><strong>Transmission:</strong> {car.transmission}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
+                
+                {/* Features & Amenities Section */}
+                <div className="mb-8">
+                  <h3 className="text-lg font-semibold mb-3 border-b pb-2">Features & Amenities</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {car.features && typeof car.features === 'string' ? (
+                      // If features is a string, split it by comma
+                      car.features.split(',').map((feature, index) => (
+                        <div key={index} className="flex items-center">
+                          <svg className="w-6 h-6 mr-2 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          <span>{feature.trim()}</span>
+                        </div>
+                      ))
+                    ) : car.features && Array.isArray(car.features) ? (
+                      // If features is already an array
+                      car.features.map((feature, index) => (
+                        <div key={index} className="flex items-center">
+                          <svg className="w-6 h-6 mr-2 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          <span>{typeof feature === 'string' ? feature.trim() : feature}</span>
+                        </div>
+                      ))
+                    ) : (
+                      // Fallback if no features are available
+                      <div className="col-span-2 text-gray-500 italic">
+                        No specific features listed for this vehicle.
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
               </div>
             )}
 
@@ -286,57 +335,6 @@ const CarDetails = () => {
 
                 {ratings && ratings.ratings && ratings.ratings.length > 0 ? (
                   <div className="space-y-6">
-                    <div className="space-y-2 mb-6">
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium">Cleanliness</span>
-                        <div className="flex items-center">
-                          <div className="w-48 h-2 bg-gray-200 rounded-full mr-2">
-                            <div
-                              className="h-2 bg-blue-500 rounded-full"
-                              style={{ width: `${(ratings.categories?.cleanliness || 0) * 20}%` }}
-                            ></div>
-                          </div>
-                          <span>{ratings.categories?.cleanliness?.toFixed(1) || '0.0'}</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium">Maintenance</span>
-                        <div className="flex items-center">
-                          <div className="w-48 h-2 bg-gray-200 rounded-full mr-2">
-                            <div
-                              className="h-2 bg-blue-500 rounded-full"
-                              style={{ width: `${(ratings.categories?.maintenance || 0) * 20}%` }}
-                            ></div>
-                          </div>
-                          <span>{ratings.categories?.maintenance?.toFixed(1) || '0.0'}</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium">Communication</span>
-                        <div className="flex items-center">
-                          <div className="w-48 h-2 bg-gray-200 rounded-full mr-2">
-                            <div
-                              className="h-2 bg-blue-500 rounded-full"
-                              style={{ width: `${(ratings.categories?.communication || 0) * 20}%` }}
-                            ></div>
-                          </div>
-                          <span>{ratings.categories?.communication?.toFixed(1) || '0.0'}</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium">Convenience</span>
-                        <div className="flex items-center">
-                          <div className="w-48 h-2 bg-gray-200 rounded-full mr-2">
-                            <div
-                              className="h-2 bg-blue-500 rounded-full"
-                              style={{ width: `${(ratings.categories?.convenience || 0) * 20}%` }}
-                            ></div>
-                          </div>
-                          <span>{ratings.categories?.convenience?.toFixed(1) || '0.0'}</span>
-                        </div>
-                      </div>
-                    </div>
-
                     <p className="text-gray-600 mb-6">Based on {totalRatings} guest ratings</p>
 
                     {}
@@ -376,15 +374,6 @@ const CarDetails = () => {
               </div>
             )}
 
-            {activeTab === 'location' && (
-              <div>
-                <h2 className="text-xl font-semibold mb-4">Car Location</h2>
-                <p className="mb-4">{car.location}</p>
-                <div className="bg-gray-200 h-64 rounded-lg flex items-center justify-center">
-                  <p className="text-gray-500">Location map would appear here</p>
-                </div>
-              </div>
-            )}
           </div>
 
           <div>

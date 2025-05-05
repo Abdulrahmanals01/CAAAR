@@ -5,12 +5,68 @@ const LocationPicker = ({ onLocationSelect }) => {
   const mapContainerRef = useRef(null);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [locationLoading, setLocationLoading] = useState(false);
   
   
   const googleRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markerRef = useRef(null);
   const listenersRef = useRef([]);
+  
+  // Function to handle getting current location
+  const handleCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setError("Geolocation is not supported by your browser");
+      return;
+    }
+    
+    setLocationLoading(true);
+    
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        
+        // Center map on current location
+        if (mapInstanceRef.current && googleRef.current) {
+          const currentPosition = new googleRef.current.maps.LatLng(latitude, longitude);
+          mapInstanceRef.current.setCenter(currentPosition);
+          
+          // Set marker
+          if (markerRef.current) {
+            markerRef.current.setPosition(currentPosition);
+            
+            // Get address from coordinates
+            const geocoder = new googleRef.current.maps.Geocoder();
+            geocoder.geocode({ location: currentPosition }, (results, status) => {
+              if (status === 'OK' && results[0]) {
+                onLocationSelect({
+                  lat: latitude,
+                  lng: longitude,
+                  address: results[0].formatted_address
+                });
+              } else {
+                onLocationSelect({
+                  lat: latitude,
+                  lng: longitude
+                });
+              }
+              setLocationLoading(false);
+            });
+          }
+        }
+      },
+      (error) => {
+        console.error("Error getting current location:", error);
+        setError("Failed to get your current location. Please ensure location services are enabled.");
+        setLocationLoading(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 5000,
+        maximumAge: 0
+      }
+    );
+  };
   
   
   useLayoutEffect(() => {
@@ -172,9 +228,32 @@ const LocationPicker = ({ onLocationSelect }) => {
             <div className="bg-white py-2 px-4 rounded-lg shadow">Loading map...</div>
           </div>
         )}
+        
+        {/* Current Location Button */}
+        <button
+          type="button"
+          onClick={handleCurrentLocation}
+          disabled={locationLoading || isLoading}
+          className="absolute top-3 right-3 bg-white py-2 px-3 rounded shadow hover:bg-gray-100 flex items-center space-x-1 text-sm z-10"
+        >
+          {locationLoading ? (
+            <>
+              <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin"></div>
+              <span>Locating...</span>
+            </>
+          ) : (
+            <>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+              </svg>
+              <span>Use Current Location</span>
+            </>
+          )}
+        </button>
       </div>
       <p className="mt-2 text-sm text-gray-500">
-        Click on the map to set the car's location or drag the marker to adjust.
+        Click on the map to set the car's location, drag the marker to adjust, or use your current location.
       </p>
     </div>
   );

@@ -58,7 +58,18 @@ const BookingForm = ({ car }) => {
     setLoading(true);
     setError('');
 
+    // Verify user is logged in
+    if (!user) {
+      setError('You have to login to book a car');
+      setLoading(false);
+      
+      // Save current URL for redirect after login
+      localStorage.setItem('redirectAfterLogin', window.location.pathname);
+      navigate('/login');
+      return;
+    }
     
+    // Verify not own car
     if (isOwnCar) {
       setError('You cannot book your own car');
       setLoading(false);
@@ -97,8 +108,30 @@ const BookingForm = ({ car }) => {
     }
   };
 
+  // If not logged in, show message and redirect button
+  if (!user) {
+    return (
+      <div className="bg-white p-6 rounded-lg shadow-md">
+        <h2 className="text-xl font-semibold mb-4">Book this car</h2>
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4 rounded">
+          You have to login to book a car
+        </div>
+        <button
+          onClick={() => {
+            // Save the current URL to redirect back after login
+            localStorage.setItem('redirectAfterLogin', window.location.pathname);
+            navigate('/login');
+          }}
+          className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition"
+        >
+          Log In to Book
+        </button>
+      </div>
+    );
+  }
   
-  if (user?.role === 'host' || user?.role === 'admin' || isOwnCar || !car) {
+  // If user is a host, admin, or car owner, or if car doesn't exist, don't show booking form
+  if (user.role === 'host' || user.role === 'admin' || isOwnCar || !car) {
     return null;
   }
 
